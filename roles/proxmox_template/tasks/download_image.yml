@@ -33,6 +33,7 @@
     url: "{{ template_image_url }}"
     dest: "{{ template_work_dir }}/{{ template_image_file }}"
     mode: "0644"
+  become: true
   register: download_result
 
 - name: Display download status

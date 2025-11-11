@@ -9,6 +9,7 @@
   ansible.builtin.stat:
     path: "{{ template_work_dir }}/{{ template_image_file }}"
     checksum_algorithm: "{{ template_checksum_algorithm }}"
+  become: true
   register: local_image
 
 - name: Download remote checksum file

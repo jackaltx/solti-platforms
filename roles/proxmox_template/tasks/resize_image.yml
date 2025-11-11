@@ -3,6 +3,7 @@
 
 - name: Get current image size
   ansible.builtin.command: qemu-img info --output=json {{ template_work_dir}}/{{ template_image_file }}
+  become: true
   register: image_info_raw
   changed_when: false
 
@@ -30,6 +31,7 @@
     qemu-img resize
     {{ template_work_dir }}/{{ template_image_file }}
     {{ template_disk_size }}
+  become: true
   when: resize_needed
   register: resize_result
   changed_when: resize_result.rc == 0

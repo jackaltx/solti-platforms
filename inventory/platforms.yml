@@ -11,7 +11,7 @@ all:
     # Add your Proxmox servers here (see ../inventory.yml for examples)
     proxmox_template_platform:
       hosts:
-        # magic:  # Uncomment and configure for your Proxmox host
+        magic:
       vars:
         # Proxmox configuration
         proxmox_storage: local-lvm
@@ -22,7 +22,7 @@ all:
     # Proxmox VM platform (Phase 2)
     proxmox_vm_platform:
       hosts:
-        # magic:  # Uncomment and configure for your Proxmox host
+        magic: # Uncomment and configure for your Proxmox host
       vars:
         proxmox_storage: local-lvm
         proxmox_bridge: vmbr0

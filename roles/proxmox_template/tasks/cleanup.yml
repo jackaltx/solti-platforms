@@ -5,6 +5,7 @@
   file:
     path: "{{ template_work_dir }}/{{ template_image_file }}"
     state: absent
+  become: true
   register: cleanup_result
 
 - name: Display cleanup result
