@@ -2,6 +2,9 @@
 # Check if cloud image has been updated on remote server
 # Compares remote checksum vs local cached image checksum
 
+- name: Include distribution-specific variables
+  ansible.builtin.include_vars: "{{ template_distribution }}.yml"
+
 - name: Check if local image exists
   ansible.builtin.stat:
     path: "{{ template_work_dir }}/{{ template_image_file }}"
@@ -17,7 +20,7 @@
 
 - name: Extract remote checksum for our image
   ansible.builtin.shell: |
-    grep "{{ template_image_file }}" /tmp/{{ template_distribution }}-checksum.txt | awk '{print $1}'
+    grep "{{ template_image_file }}" /tmp/{{ template_distribution }}-checksum.txt | grep -v '^#' | awk '{print $NF}'
   register: remote_checksum_raw
   changed_when: false
 
