@@ -1,0 +1,56 @@
+---
+# Set template notes/description with build metadata
+
+- name: Get current date
+  ansible.builtin.command: date '+%Y-%m-%d %H:%M:%S %Z'
+  register: build_date
+  changed_when: false
+
+- name: Get image info for metadata
+  ansible.builtin.command: qemu-img info --output=json {{ template_work_dir }}/{{ template_image_file }}
+  become: true
+  register: image_metadata
+  changed_when: false
+
+- name: Parse image metadata
+  ansible.builtin.set_fact:
+    image_info_parsed: "{{ image_metadata.stdout | from_json }}"
+
+- name: Build template notes
+  ansible.builtin.set_fact:
+    template_notes: |
+      Template: {{ template_name }}
+      Distribution: {{ template_distribution }}
+      VMID: {{ template_vmid }}
+      Built: {{ build_date.stdout }}
+
+      Source Image:
+        URL: {{ template_image_url }}
+        File: {{ template_image_file }}
+        Checksum ({{ template_checksum_algorithm }}): {{ remote_checksum }}
+        Size: {{ (image_info_parsed['virtual-size'] | int / 1024 / 1024 / 1024) | round(1) }}GB
+
+      Hardware:
+        Memory: {{ template_memory }}MB
+        Cores: {{ template_cores }}
+        Disk: {{ template_disk_size }}
+        BIOS: {{ template_bios }}
+
+      Cloud-init:
+        User: {{ template_ci_user }}
+        Network: {{ template_ci_ipconfig }}
+
+- name: Set template description/notes
+  ansible.builtin.command:
+    argv:
+      - qm
+      - set
+      - "{{ template_vmid }}"
+      - --description
+      - "{{ template_notes }}"
+  become: true
+  register: notes_result
+
+- name: Display notes set confirmation
+  ansible.builtin.debug:
+    msg: "Template notes/description set for VM {{ template_vmid }}"

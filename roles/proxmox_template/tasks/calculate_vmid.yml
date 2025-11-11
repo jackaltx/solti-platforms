@@ -1,0 +1,53 @@
+---
+# Calculate next available VMID based on existing templates
+# Uses smart numbering with base VMID from vars file
+# Rocky 9 = 7000-7999, Rocky 10 = 10000-10999, Debian 12 = 9000-9999
+
+- name: Get list of existing VMs
+  ansible.builtin.command: pvesh get /cluster/resources --type vm --output-format json
+  become: true
+  register: vm_list_raw
+  changed_when: false
+
+- name: Parse VM list
+  ansible.builtin.set_fact:
+    vm_list: "{{ vm_list_raw.stdout | from_json }}"
+
+- name: Set VMID range based on base VMID from vars
+  ansible.builtin.set_fact:
+    vmid_range_start: "{{ template_vmid }}"
+    vmid_range_end: "{{ template_vmid | int + 999 }}"
+
+- name: Find existing VMIDs in range for this distribution
+  ansible.builtin.set_fact:
+    existing_vmids: >-
+      {{ vm_list
+         | selectattr('vmid', 'defined')
+         | map(attribute='vmid')
+         | map('int')
+         | select('>=', vmid_range_start | int)
+         | select('<=', vmid_range_end | int)
+         | list
+         | sort }}
+
+- name: Display existing VMIDs
+  ansible.builtin.debug:
+    msg: "Existing VMIDs for {{ template_distribution }}: {{ existing_vmids }}"
+
+- name: Calculate next VMID
+  ansible.builtin.set_fact:
+    calculated_vmid: "{{ (vmid_range_start | int + 1) if (existing_vmids | length == 0) else ((existing_vmids | max) + 1) }}"
+
+- name: Set template VMID and name
+  ansible.builtin.set_fact:
+    template_vmid: "{{ calculated_vmid }}"
+    template_name: "{{ template_distribution }}-template-{{ calculated_vmid }}"
+
+- name: Display calculated VMID
+  ansible.builtin.debug:
+    msg:
+      - "Distribution: {{ template_distribution }}"
+      - "VMID range: {{ vmid_range_start }}-{{ vmid_range_end }}"
+      - "Existing VMIDs: {{ existing_vmids }}"
+      - "Next VMID: {{ template_vmid }}"
+      - "Template name: {{ template_name }}"

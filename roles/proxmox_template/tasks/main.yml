@@ -28,34 +28,18 @@
         mode: "0755"
       become: true
 
-    # This my assumptions section, will need to be propagated
-    # - We will store templates using smart number
-    #  Debian12 -  8XXX
-    #  Rock9    -  9XXX
-    #  Rocky10  - 10XXX
-    # Where XXX will be a "version"..  for exampl  8001 will be the first Deb12 vm template
-    # Next build  will be 8002
+    # -------------
+    # Calculate next available VMID using smart numbering
+    # Rocky 9: 7001-7999, Rocky 10: 10001-10999, Debian 12: 8001-8999
+    - name: Calculate next VMID
+      ansible.builtin.include_tasks: calculate_vmid.yml
 
-    # First download and prepare the image for use
-    # if it does not exist or has been updated (is this possible)
-    # this not just any image, but a cloud-init enabled image!
-
+    # Download and prepare the cloud-init enabled image
     - name: Download cloud image
       ansible.builtin.include_tasks: download_image.yml
 
     - name: Resize disk image
       ansible.builtin.include_tasks: resize_image.yml
-
-    # Find out what version we are on and bumb the template_vmid by 1
-
-    # remove this from from this, but create task files that can be run to (prune last, prune all, prune all but last...)
-    # This means we will need to create a data store for currency???
-
-    - name: Destroy existing VM if exists
-      ansible.builtin.command: "qm destroy {{ template_vmid }}"
-      ignore_errors: true
-      become: true
-      changed_when: false
 
     # -------------
     # NOT SURE WHY, but createing the I can't see not this group of tasks separately?
@@ -78,6 +62,10 @@
     # This I can see not doing (if I wanted a non-template)
     - name: Convert to template
       ansible.builtin.include_tasks: convert_template.yml
+
+    # Set template notes with build metadata
+    - name: Set template notes
+      ansible.builtin.include_tasks: set_notes.yml
 
     # If desired
     - name: Cleanup downloaded images
