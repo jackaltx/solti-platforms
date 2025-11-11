@@ -35,11 +35,11 @@ template_ci_ipconfig: "ip=dhcp"
 # Agent
 template_qemu_agent: 1
 
-# Working directory for downloads
-template_work_dir: "/tmp/proxmox-templates"
+# Working directory for downloads (persistent storage)
+template_work_dir: "/opt/solti/qcow"
 
 # Cleanup downloaded images after template creation
-template_cleanup: true
+template_cleanup: false
 
 # Force download even if image checksums match
 template_force_download: false

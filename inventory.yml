@@ -1,0 +1,64 @@
+---
+all:
+  vars:
+    domain: a0a0.org
+    mylab_nolog: "{{ cluster_secure_log | bool | default(true) }}"
+    ansible_user: lavender
+    ansible_ssh_private_key_file: ~/.ssh/id_ed25519
+
+    # wazuh_deployment_profile: internal
+    # wazuh_agent_state: configure
+    # wazuh_server_address: 192.168.55.200
+
+    # basically non-ssh stuff, like LXC containers
+    mylab_non_ssh: false
+
+  children:
+    # ................................................
+    mylab:
+      # .........................................
+      # mylab hosts (This gives me a central host registry)
+      hosts:
+        # localhost !!!!!
+        firefly:
+          ansible_host: localhost
+          ansible_connection: local
+
+        # Living Room
+        inara:
+          ansible_host: "inara.{{domain}}"
+
+        # Proxmox server
+        magic:
+          ansible_host: "magic.{{domain}}"
+
+        # linode working
+        fleur:
+          ansible_host: "fleur.lavnet.net"
+          # ansible_host: 96.126.127.130
+
+        # Ispconfig on proxmox vm
+        ispconfig:
+          ansible_host: "ispconfig.{{ domain }}"
+
+      # .........................................
+      # mylab vars
+      vars:
+        mylab_debug: false
+
+      children:
+        # .....................................
+
+        # ===========================================
+        # used to install common packages to all "clients"
+        # saved for later
+        clients:
+          hosts:
+            #
+            # note that not all mylab hosts are clients,
+            # For now this is focused on host monitoring
+
+            fleur:
+            firefly:
+            magic:
+            ispconfig:

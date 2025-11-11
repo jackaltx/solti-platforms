@@ -1,24 +1,28 @@
 ---
 # Platform inventory for solti-platforms collection
 # Used by manage-platform.sh and platform-exec.sh
+#
+# IMPORTANT: Add your Proxmox server(s) to proxmox_template_platform group
+# These tasks run ON the Proxmox host, not localhost
 
 all:
   children:
     # Proxmox template platform
+    # Add your Proxmox servers here (see ../inventory.yml for examples)
     proxmox_template_platform:
       hosts:
-        localhost:
-          ansible_connection: local
+        # magic:  # Uncomment and configure for your Proxmox host
       vars:
         # Proxmox configuration
         proxmox_storage: local-lvm
         proxmox_bridge: vmbr0
+        template_work_dir: /opt/solti/qcow
+        template_cleanup: false
 
     # Proxmox VM platform (Phase 2)
     proxmox_vm_platform:
       hosts:
-        localhost:
-          ansible_connection: local
+        # magic:  # Uncomment and configure for your Proxmox host
       vars:
         proxmox_storage: local-lvm
         proxmox_bridge: vmbr0

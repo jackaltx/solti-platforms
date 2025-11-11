@@ -1,15 +1,45 @@
 ---
-# Resize disk image to desired size
+# Resize disk image to desired size (only if smaller than target)
+
+- name: Get current image size
+  ansible.builtin.command: qemu-img info --output=json {{ template_work_dir}}/{{ template_image_file }}
+  register: image_info_raw
+  changed_when: false
+
+- name: Parse image info
+  ansible.builtin.set_fact:
+    image_info: "{{ image_info_raw.stdout | from_json }}"
+
+- name: Calculate target size in bytes
+  ansible.builtin.set_fact:
+    target_bytes: "{{ (template_disk_size | regex_replace('G$', '') | int) * 1024 * 1024 * 1024 }}"
+
+- name: Determine if resize needed
+  ansible.builtin.set_fact:
+    resize_needed: "{{ (image_info['virtual-size'] | int) < (target_bytes | int) }}"
+
+- name: Display resize decision
+  ansible.builtin.debug:
+    msg: >-
+      Current: {{ (image_info['virtual-size'] | int / 1024 / 1024 / 1024) | round(1) }}GB,
+      Target: {{ template_disk_size }},
+      Resize needed: {{ resize_needed }}
 
 - name: Resize disk image to {{ template_disk_size }}
-  command: >
+  ansible.builtin.command: >
     qemu-img resize
     {{ template_work_dir }}/{{ template_image_file }}
     {{ template_disk_size }}
+  when: resize_needed
   register: resize_result
-  changed_when: "'Image resized' in resize_result.stdout or resize_result.rc == 0"
+  changed_when: resize_result.rc == 0
 
 - name: Display resize result
-  debug:
-    var: resize_result.stdout_lines
-  when: resize_result.stdout_lines is defined
+  ansible.builtin.debug:
+    msg: "Image resized from {{ (image_info['virtual-size'] | int / 1024 / 1024 / 1024) | round(1) }}GB to {{ template_disk_size }}"
+  when: resize_needed and resize_result.rc == 0
+
+- name: Skip resize message
+  ansible.builtin.debug:
+    msg: "Image already {{ (image_info['virtual-size'] | int / 1024 / 1024 / 1024) | round(1) }}GB >= {{ template_disk_size }}, skipping resize"
+  when: not resize_needed

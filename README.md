@@ -14,10 +14,18 @@ This collection manages platform creation (VMs, K3s clusters) for the SOLTI test
 
 ## Quick Start
 
+### Configure Inventory
+
+**IMPORTANT**: Templates are built ON the Proxmox server, not localhost.
+
+1. Edit `inventory/platforms.yml`
+2. Uncomment `magic:` (or add your Proxmox host)
+3. Ensure host defined in `inventory.yml`
+
 ### Build Proxmox Templates
 
 ```bash
-# Build single template
+# Build single template (runs on Proxmox host)
 ./manage-platform.sh proxmox_template build -e template_distribution=rocky9
 
 # Build all templates (Rocky 9, Rocky 10, Debian 12)
