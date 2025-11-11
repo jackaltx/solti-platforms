@@ -1,0 +1,53 @@
+---
+# Platform inventory for solti-platforms collection
+# Used by manage-platform.sh and platform-exec.sh
+
+all:
+  children:
+    # Proxmox template platform
+    proxmox_template_platform:
+      hosts:
+        localhost:
+          ansible_connection: local
+      vars:
+        # Proxmox configuration
+        proxmox_storage: local-lvm
+        proxmox_bridge: vmbr0
+
+    # Proxmox VM platform (Phase 2)
+    proxmox_vm_platform:
+      hosts:
+        localhost:
+          ansible_connection: local
+      vars:
+        proxmox_storage: local-lvm
+        proxmox_bridge: vmbr0
+
+    # Platform base provisioning (Phase 3)
+    platform_base_platform:
+      hosts:
+        # Add your target hosts here
+      vars:
+        # Common provisioning variables
+
+    # Linode instance platform (Phase 4)
+    linode_instance_platform:
+      hosts:
+        localhost:
+          ansible_connection: local
+      vars:
+        # Linode API configuration
+
+    # K3s control plane (Phase 5)
+    k3s_control_platform:
+      hosts:
+        # Add your k3s control plane hosts here
+      vars:
+        # K3s control plane variables
+
+    # K3s worker nodes (Phase 5)
+    k3s_worker_platform:
+      hosts:
+        # Add your k3s worker hosts here
+      vars:
+        # K3s worker variables

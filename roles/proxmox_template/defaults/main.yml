@@ -1,4 +1,7 @@
 ---
+# Role state (present, absent)
+template_state: present
+
 # Distribution to build (rocky9, rocky10, debian12)
 template_distribution: rocky9
 

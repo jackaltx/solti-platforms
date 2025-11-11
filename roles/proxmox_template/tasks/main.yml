@@ -1,46 +1,113 @@
 ---
-# Main task file for proxmox_template role
-# Builds Proxmox VM templates from cloud images
+#
+# proxmox_template role - supports present and absent states
+# States:
+#   present: Build Proxmox VM template from cloud image
+#   absent: Remove template (optionally remove downloaded images)
+#
+
+- name: Validate state parameter
+  ansible.builtin.fail:
+    msg: "template_state must be one of: present, absent. Current value: {{ template_state }}"
+  when: template_state not in ['present', 'absent']
 
 - name: Include distribution-specific variables
-  include_vars: "{{ template_distribution }}.yml"
+  ansible.builtin.include_vars: "{{ template_distribution }}.yml"
 
-- name: Create work directory
-  file:
-    path: "{{ template_work_dir }}"
-    state: directory
-    mode: '0755'
+# =======================================================================
+# BUILD TEMPLATE
+# =======================================================================
 
-- name: Download cloud image
-  include_tasks: download_image.yml
+- name: Build Proxmox template
+  when: template_state == 'present'
+  block:
+    - name: Create work directory
+      ansible.builtin.file:
+        path: "{{ template_work_dir }}"
+        state: directory
+        mode: "0755"
 
-- name: Resize disk image
-  include_tasks: resize_image.yml
+    # This my assumptions section, will need to be propagated
+    # - We will store templates using smart number
+    #  Debian12 -  8XXX
+    #  Rock9    -  9XXX
+    #  Rocky10  - 10XXX
+    # Where XXX will be a "version"..  for exampl  8001 will be the first Deb12 vm template
+    # Next build  will be 8002
 
-- name: Destroy existing VM if exists
-  command: "qm destroy {{ template_vmid }}"
-  ignore_errors: true
-  become: true
-  changed_when: false
+    # First download and prepare the image for use
+    # if it does not exist or has been updated (is this possible)
+    # this not just any image, but a cloud-init enabled image!
 
-- name: Create VM
-  include_tasks: create_vm.yml
+    - name: Download cloud image
+      ansible.builtin.include_tasks: download_image.yml
 
-- name: Import disk
-  include_tasks: import_disk.yml
+    - name: Resize disk image
+      ansible.builtin.include_tasks: resize_image.yml
 
-- name: Configure storage
-  include_tasks: configure_storage.yml
+    # Find out what version we are on and bumb the template_vmid by 1
 
-- name: Setup cloud-init
-  include_tasks: setup_cloudinit.yml
+    # remove this from from this, but create task files that can be run to (prune last, prune all, prune all but last...)
+    # This means we will need to create a data store for currency???
 
-- name: Convert to template
-  include_tasks: convert_template.yml
+    - name: Destroy existing VM if exists
+      ansible.builtin.command: "qm destroy {{ template_vmid }}"
+      ignore_errors: true
+      become: true
+      changed_when: false
 
-- name: Cleanup downloaded images
-  include_tasks: cleanup.yml
-  when: template_cleanup | default(true)
+    # -------------
+    # NOT SURE WHY, but createing the I can't see not this group of tasks separately?
 
-- name: Verify template
-  include_tasks: verify.yml
+    # in this case I want to create a vm, is cloud-init enabled?  is it to be a template?
+    - name: Create VM
+      ansible.builtin.include_tasks: create_vm.yml
+
+    - name: Import disk
+      ansible.builtin.include_tasks: import_disk.yml
+
+    - name: Configure storage
+      ansible.builtin.include_tasks: configure_storage.yml
+
+    # if this is cloud-init image, so why would we not do this?
+    - name: Setup cloud-init
+      ansible.builtin.include_tasks: setup_cloudinit.yml
+    # -------------
+
+    # This I can see not doing (if I wanted a non-template)
+    - name: Convert to template
+      ansible.builtin.include_tasks: convert_template.yml
+
+    # If desired
+    - name: Cleanup downloaded images
+      ansible.builtin.include_tasks: cleanup.yml
+      when: template_cleanup | default(true)
+
+    # for templates and non-templates.
+    - name: Verify template
+      ansible.builtin.include_tasks: verify.yml
+
+# =======================================================================
+# REMOVE TEMPLATE
+# =======================================================================
+
+- name: Remove Proxmox template
+  when: template_state == 'absent'
+  block:
+    # which one to destroy?
+    - name: Destroy template VM
+      ansible.builtin.command: "qm destroy {{ template_vmid }}"
+      become: true
+      ignore_errors: true
+      register: destroy_result
+
+    - name: Display removal result
+      ansible.builtin.debug:
+        msg: "Template {{ template_vmid }} ({{ template_name }}) {{ 'removed' if destroy_result.rc == 0 else 'not found or already removed' }}"
+
+    # interesting, a coupled effect (delete image and vm? dunno)
+    - name: Remove downloaded images
+      ansible.builtin.file:
+        path: "{{ template_work_dir }}/{{ template_image_file }}"
+        state: absent
+      when: template_cleanup | default(false)

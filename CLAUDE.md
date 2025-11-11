@@ -6,14 +6,23 @@ Platform creation and provisioning for the SOLTI ecosystem. Creates VMs, K3s clu
 
 ## Quick Commands
 
+**Dynamic Playbook Pattern** - No static playbooks, all generated on-the-fly:
+
 ```bash
-# Build all templates
-ansible-playbook playbooks/build-all-templates.yml -K
-
 # Build single template
-ansible-playbook playbooks/build-single-template.yml -e template_distribution=rocky9 -K
+./manage-platform.sh proxmox_template build -e template_distribution=rocky9
 
-# Verify templates
+# Build all templates
+./manage-platform.sh proxmox_template build --all-distros
+
+# Destroy template
+./manage-platform.sh proxmox_template destroy -e template_distribution=rocky9
+
+# Run specific tasks
+./platform-exec.sh proxmox_template verify -e template_distribution=rocky9
+./platform-exec.sh -K proxmox_template cleanup -e template_distribution=debian12
+
+# Verify templates (direct)
 sudo qm list | grep template
 ```
 
@@ -63,12 +72,31 @@ Distribution-specific vars in `vars/<distro>.yml`:
 - rocky10.yml - VMID 7001
 - debian12.yml - VMID 9001
 
+### Dynamic Playbook Pattern
+
+Following solti-containers pattern with `manage-svc.sh` and `svc-exec.sh`:
+
+**manage-platform.sh** - State-based management:
+- Maps actions to states (build→present, destroy→absent)
+- Generates playbooks with `{platform}_state` variable
+- Supports `--all-distros` flag for batch operations
+- Auto-cleans successful runs, preserves failures for debugging
+
+**platform-exec.sh** - Task execution:
+- Runs specific task files from roles (verify, cleanup, etc.)
+- Uses `include_role` with `tasks_from:` and `vars_from: main`
+- Loads role defaults automatically
+- Optional `-K` flag for sudo operations
+
+Generated playbooks stored in `tmp/`, cleaned on success.
+
 ### Reused from solti-containers
 
 - Distribution-specific vars files
 - Per-role verification tasks
 - Comprehensive documentation
 - Base role pattern (platform_base)
+- Dynamic playbook generation scripts
 
 ## Roles
 
@@ -129,6 +157,8 @@ cd ../solti-monitoring
 ### Collection Root
 - **README.md** - Overview, quick start, roadmap
 - **CLAUDE.md** - This file
+- **manage-platform.sh** - State-based management script
+- **platform-exec.sh** - Task execution script
 - **ansible.cfg** - Collection configuration
 - **galaxy.yml** - Collection metadata
 
@@ -139,12 +169,11 @@ cd ../solti-monitoring
   - defaults/main.yml - Role defaults
   - README.md - Role documentation
 
-### Playbooks
-- **playbooks/build-all-templates.yml** - Build all 3 distributions
-- **playbooks/build-single-template.yml** - Build one distribution
-
 ### Inventory
-- **inventory/proxmox.yml** - Template configuration
+- **inventory/platforms.yml** - Platform configuration (role-centric groups)
+
+### Generated Files
+- **tmp/** - Dynamic playbooks (auto-cleaned on success, preserved on failure)
 
 ### Context Documentation
 - **../../.claude/project-contexts/solti-platforms-decision.md** - Architectural decisions
@@ -167,38 +196,44 @@ template_tags: "ubuntu-template,ubuntu24,cloudinit"
 EOF
 ```
 
-2. Update inventory, playbooks, documentation
+2. Update `ALL_DISTROS` array in [manage-platform.sh](manage-platform.sh):
+```bash
+ALL_DISTROS=(
+    "rocky9"
+    "rocky10"
+    "debian12"
+    "ubuntu24"  # Add new distribution
+)
+```
 
 3. Test:
 ```bash
-ansible-playbook playbooks/build-single-template.yml \
-  -e template_distribution=ubuntu24 -K
+./manage-platform.sh proxmox_template build -e template_distribution=ubuntu24
 ```
 
 ### Debug Template Build
 
 ```bash
 # Disable cleanup to inspect downloaded image
-ansible-playbook playbooks/build-single-template.yml \
+./manage-platform.sh proxmox_template build \
   -e template_distribution=rocky9 \
-  -e template_cleanup=false -K
+  -e template_cleanup=false
 
 # Check downloaded image
 ls -lh /tmp/proxmox-templates/
 
 # Manual cleanup
-rm -rf /tmp/proxmox-templates/
+./platform-exec.sh -K proxmox_template cleanup -e template_distribution=rocky9
 ```
 
 ### Destroy and Rebuild
 
 ```bash
 # Destroy template
-sudo qm destroy 7000
+./manage-platform.sh proxmox_template destroy -e template_distribution=rocky9
 
 # Rebuild
-ansible-playbook playbooks/build-single-template.yml \
-  -e template_distribution=rocky9 -K
+./manage-platform.sh proxmox_template build -e template_distribution=rocky9
 ```
 
 ## Development Guidelines
@@ -209,8 +244,9 @@ ansible-playbook playbooks/build-single-template.yml \
 2. Create distribution-specific vars if applicable
 3. Include verify.yml task file
 4. Document in role README.md
-5. Add example playbook
-6. Update collection README.md
+5. Add platform to `SUPPORTED_PLATFORMS` in both scripts
+6. Update [inventory/platforms.yml](inventory/platforms.yml) with new platform group
+7. Update collection README.md
 
 ### Code Style
 
@@ -225,12 +261,12 @@ ansible-playbook playbooks/build-single-template.yml \
 Currently manual testing:
 ```bash
 # Test build
-ansible-playbook playbooks/build-single-template.yml -e template_distribution=rocky9 -K
+./manage-platform.sh proxmox_template build -e template_distribution=rocky9
 
 # Verify
-sudo qm list | grep rocky9-template
+./platform-exec.sh proxmox_template verify -e template_distribution=rocky9
 
-# Test clone
+# Test clone (manual for now, will be proxmox_vm role in Phase 2)
 sudo qm clone 7000 100 --name test-vm
 sudo qm start 100
 ```
@@ -278,7 +314,7 @@ df -h /tmp
 ### Internal
 - `.claude/project-contexts/solti-platforms-decision.md` - Architecture
 - `build_templates_original/` - Original shell scripts
-- `../solti-containers/` - Pattern reference
+- `../solti-containers/` - Pattern reference (manage-svc.sh, svc-exec.sh)
 
 ### External
 - [Proxmox qm Command](https://pve.proxmox.com/pve-docs/qm.1.html)
@@ -288,18 +324,27 @@ df -h /tmp
 
 ## Notes for Claude Code
 
-- This collection is new (Phase 1 complete)
-- proxmox_template role is production-ready
-- Next priority: proxmox_vm role
-- Follow patterns from solti-containers
+- This collection uses **dynamic playbook generation** - no static playbooks
+- proxmox_template role is production-ready (Phase 1 complete)
+- Next priority: proxmox_vm role (Phase 2)
+- Follow patterns from solti-containers (manage-svc.sh, svc-exec.sh)
 - Maintain compatibility with existing collections
 - CREATE → PROVISION pattern is fundamental
+- All management through [manage-platform.sh](manage-platform.sh) and [platform-exec.sh](platform-exec.sh)
 
 ## Changelog
+
+**2025-11-11**: Dynamic playbook pattern implemented
+- Created [manage-platform.sh](manage-platform.sh) for state-based management
+- Created [platform-exec.sh](platform-exec.sh) for task execution
+- Removed static playbooks (build-all-templates.yml, build-single-template.yml)
+- Updated inventory: [inventory/proxmox.yml](inventory/proxmox.yml) → [inventory/platforms.yml](inventory/platforms.yml)
+- Added `--all-distros` flag for batch template builds
+- Documentation updated for dynamic pattern
 
 **2025-11-10**: Initial collection created
 - Initialized collection structure
 - Implemented proxmox_template role
 - Added support for Rocky 9.x, Rocky 10.x, Debian 12
-- Created playbooks and inventory examples
+- Created initial playbooks and inventory
 - Documentation complete

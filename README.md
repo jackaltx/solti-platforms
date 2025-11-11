@@ -17,11 +17,17 @@ This collection manages platform creation (VMs, K3s clusters) for the SOLTI test
 ### Build Proxmox Templates
 
 ```bash
-# Build all templates (Rocky 9, Rocky 10, Debian 12)
-ansible-playbook playbooks/build-all-templates.yml -K
-
 # Build single template
-ansible-playbook playbooks/build-single-template.yml -e template_distribution=rocky9 -K
+./manage-platform.sh proxmox_template build -e template_distribution=rocky9
+
+# Build all templates (Rocky 9, Rocky 10, Debian 12)
+./manage-platform.sh proxmox_template build --all-distros
+
+# Destroy template
+./manage-platform.sh proxmox_template destroy -e template_distribution=rocky9
+
+# Verify template
+./platform-exec.sh proxmox_template verify -e template_distribution=rocky9
 ```
 
 ### Supported Distributions
@@ -53,13 +59,15 @@ template_cores: 4                 # CPU cores
 template_disk_size: 8G            # Disk size
 ```
 
-**Example**:
-```yaml
-- hosts: localhost
-  roles:
-    - role: proxmox_template
-      vars:
-        template_distribution: rocky9
+**Usage**:
+```bash
+# State-based management (uses manage-platform.sh)
+./manage-platform.sh proxmox_template build -e template_distribution=rocky9
+./manage-platform.sh proxmox_template destroy -e template_distribution=debian12
+
+# Task execution (uses platform-exec.sh)
+./platform-exec.sh proxmox_template verify -e template_distribution=rocky9
+./platform-exec.sh -K proxmox_template cleanup -e template_distribution=debian12
 ```
 
 See [roles/proxmox_template/README.md](roles/proxmox_template/README.md) for details.
@@ -77,8 +85,10 @@ jackaltx/solti_platforms/
 │   ├── proxmox_vm/           # VM lifecycle (planned)
 │   ├── linode_instance/      # Linode management (planned)
 │   └── platform_base/        # Common provisioning (planned)
-├── playbooks/                # Example playbooks
-├── inventory/                # Example inventories
+├── manage-platform.sh        # State-based management script
+├── platform-exec.sh          # Task execution script
+├── inventory/platforms.yml   # Platform inventory
+├── tmp/                      # Generated playbooks (auto-cleaned)
 └── docs/                     # Documentation
 ```
 
@@ -117,11 +127,12 @@ git clone <repo-url> ansible_collections/jackaltx/solti_platforms
 
 ## Configuration
 
-Edit `inventory/proxmox.yml` to customize:
+Edit [inventory/platforms.yml](inventory/platforms.yml) to customize:
 - Storage backend (`proxmox_storage`)
 - Network bridge (`proxmox_bridge`)
-- Template VMIDs
 - Hardware specs (memory, cores, disk)
+
+Distribution-specific settings (VMIDs, image URLs) are in [roles/proxmox_template/vars/](roles/proxmox_template/vars/)
 
 ## Development
 
@@ -186,15 +197,25 @@ Reuses successful patterns:
 
 ```bash
 # Build Rocky 9 template
-ansible-playbook playbooks/build-single-template.yml \
-  -e template_distribution=rocky9 -K
+./manage-platform.sh proxmox_template build -e template_distribution=rocky9
 
 # Verify template exists
+./platform-exec.sh proxmox_template verify -e template_distribution=rocky9
+# Or directly:
 sudo qm list | grep rocky9-template
 
 # Build all templates
-ansible-playbook playbooks/build-all-templates.yml -K
+./manage-platform.sh proxmox_template build --all-distros
+
+# Run specific tasks
+./platform-exec.sh -K proxmox_template cleanup -e template_distribution=rocky9
 ```
+
+### Dynamic Playbooks
+
+Both scripts generate playbooks on-the-fly in `tmp/`:
+- **Success**: Playbook auto-deleted
+- **Failure**: Playbook preserved for debugging
 
 ### Future: Molecule Testing
 
