@@ -1,0 +1,8 @@
+---
+# Debian 12 template configuration
+template_vmid: 9001
+template_name: debian12-template
+template_os_type: l26
+template_image_url: "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
+template_image_file: "debian-12-generic-amd64.qcow2"
+template_tags: "debian-template,debian-12,cloudinit"

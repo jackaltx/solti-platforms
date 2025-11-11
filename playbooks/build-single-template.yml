@@ -1,0 +1,19 @@
+---
+# Build a single Proxmox template
+# Usage: ansible-playbook playbooks/build-single-template.yml -e template_distribution=rocky9
+
+- name: Build Proxmox template
+  hosts: localhost
+  gather_facts: true
+
+  tasks:
+    - name: Verify template_distribution is set
+      assert:
+        that:
+          - template_distribution is defined
+          - template_distribution in ['rocky9', 'rocky10', 'debian12']
+        fail_msg: "template_distribution must be set to rocky9, rocky10, or debian12"
+
+    - name: Build {{ template_distribution }} template
+      include_role:
+        name: proxmox_template

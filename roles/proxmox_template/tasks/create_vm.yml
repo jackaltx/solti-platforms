@@ -1,0 +1,27 @@
+---
+# Create Proxmox VM with hardware configuration
+# Based on user's build-rocky9-cloud-init.sh and build-deb12-cloud-init.sh
+
+- name: Create Proxmox VM {{ template_vmid }}
+  command: >
+    qm create {{ template_vmid }}
+    --name {{ template_name }}
+    --ostype {{ template_os_type }}
+    --memory {{ template_memory }}
+    --balloon {{ template_balloon }}
+    --agent {{ template_qemu_agent }}
+    --bios {{ template_bios }}
+    --machine {{ template_machine }}
+    --efidisk0 {{ proxmox_storage }}:0,pre-enrolled-keys=0
+    --cpu {{ template_cpu_type }}
+    --cores {{ template_cores }}
+    --numa {{ template_numa }}
+    --vga serial0
+    --serial0 socket
+    --net0 {{ template_network_model }},bridge={{ proxmox_bridge }},mtu={{ template_network_mtu }}
+  become: true
+  register: vm_create
+
+- name: Display VM creation result
+  debug:
+    msg: "Created VM {{ template_vmid }} ({{ template_name }})"

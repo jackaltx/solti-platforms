@@ -1,0 +1,19 @@
+---
+# Download cloud image from distribution URL
+
+- name: Check if image already exists
+  stat:
+    path: "{{ template_work_dir }}/{{ template_image_file }}"
+  register: image_file
+
+- name: Download {{ template_distribution }} cloud image
+  get_url:
+    url: "{{ template_image_url }}"
+    dest: "{{ template_work_dir }}/{{ template_image_file }}"
+    mode: '0644'
+  when: not image_file.stat.exists
+  register: download_result
+
+- name: Display download status
+  debug:
+    msg: "Image {{ 'downloaded' if download_result.changed else 'already exists' }}"

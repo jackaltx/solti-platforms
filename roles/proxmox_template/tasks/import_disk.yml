@@ -1,0 +1,14 @@
+---
+# Import disk image into Proxmox storage
+
+- name: Import disk image to VM {{ template_vmid }}
+  command: >
+    qm importdisk {{ template_vmid }}
+    {{ template_work_dir }}/{{ template_image_file }}
+    {{ proxmox_storage }}
+  become: true
+  register: import_result
+
+- name: Display import result
+  debug:
+    msg: "Disk imported successfully for VM {{ template_vmid }}"

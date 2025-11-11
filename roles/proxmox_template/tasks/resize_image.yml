@@ -1,0 +1,15 @@
+---
+# Resize disk image to desired size
+
+- name: Resize disk image to {{ template_disk_size }}
+  command: >
+    qemu-img resize
+    {{ template_work_dir }}/{{ template_image_file }}
+    {{ template_disk_size }}
+  register: resize_result
+  changed_when: "'Image resized' in resize_result.stdout or resize_result.rc == 0"
+
+- name: Display resize result
+  debug:
+    var: resize_result.stdout_lines
+  when: resize_result.stdout_lines is defined

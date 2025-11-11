@@ -1,0 +1,12 @@
+---
+# Convert VM to template
+
+- name: Convert VM {{ template_vmid }} to template
+  command: >
+    qm template {{ template_vmid }}
+  become: true
+  register: template_result
+
+- name: Display template conversion result
+  debug:
+    msg: "VM {{ template_vmid }} ({{ template_name }}) successfully converted to template"

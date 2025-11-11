@@ -1,0 +1,28 @@
+---
+# Configure storage and boot settings
+
+- name: Set SCSI hardware
+  command: >
+    qm set {{ template_vmid }}
+    --scsihw {{ template_disk_controller }}
+    --virtio0 {{ proxmox_storage }}:vm-{{ template_vmid }}-disk-1,{{ template_disk_options }}
+  become: true
+  register: scsi_result
+
+- name: Set boot order
+  command: >
+    qm set {{ template_vmid }}
+    --boot order=virtio0
+  become: true
+  register: boot_result
+
+- name: Add cloud-init drive
+  command: >
+    qm set {{ template_vmid }}
+    --scsi1 {{ proxmox_storage }}:cloudinit
+  become: true
+  register: cloudinit_drive_result
+
+- name: Display storage configuration result
+  debug:
+    msg: "Storage configured for VM {{ template_vmid }}"

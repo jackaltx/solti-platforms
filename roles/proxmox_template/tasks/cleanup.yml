@@ -1,0 +1,13 @@
+---
+# Cleanup downloaded images
+
+- name: Remove downloaded image file
+  file:
+    path: "{{ template_work_dir }}/{{ template_image_file }}"
+    state: absent
+  register: cleanup_result
+
+- name: Display cleanup result
+  debug:
+    msg: "Cleaned up {{ template_image_file }}"
+  when: cleanup_result.changed

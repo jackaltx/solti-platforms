@@ -1,0 +1,46 @@
+---
+# Main task file for proxmox_template role
+# Builds Proxmox VM templates from cloud images
+
+- name: Include distribution-specific variables
+  include_vars: "{{ template_distribution }}.yml"
+
+- name: Create work directory
+  file:
+    path: "{{ template_work_dir }}"
+    state: directory
+    mode: '0755'
+
+- name: Download cloud image
+  include_tasks: download_image.yml
+
+- name: Resize disk image
+  include_tasks: resize_image.yml
+
+- name: Destroy existing VM if exists
+  command: "qm destroy {{ template_vmid }}"
+  ignore_errors: true
+  become: true
+  changed_when: false
+
+- name: Create VM
+  include_tasks: create_vm.yml
+
+- name: Import disk
+  include_tasks: import_disk.yml
+
+- name: Configure storage
+  include_tasks: configure_storage.yml
+
+- name: Setup cloud-init
+  include_tasks: setup_cloudinit.yml
+
+- name: Convert to template
+  include_tasks: convert_template.yml
+
+- name: Cleanup downloaded images
+  include_tasks: cleanup.yml
+  when: template_cleanup | default(true)
+
+- name: Verify template
+  include_tasks: verify.yml

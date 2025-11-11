@@ -1,0 +1,34 @@
+---
+# Configure cloud-init settings
+
+- name: Set template tags
+  command: >
+    qm set {{ template_vmid }}
+    --tags {{ template_tags }}
+  become: true
+  register: tags_result
+
+- name: Set cloud-init user
+  command: >
+    qm set {{ template_vmid }}
+    --ciuser {{ template_ci_user }}
+  become: true
+  register: ciuser_result
+
+- name: Set SSH keys for cloud-init
+  command: >
+    qm set {{ template_vmid }}
+    --sshkeys {{ template_ci_sshkeys }}
+  become: true
+  register: sshkeys_result
+
+- name: Set IP configuration
+  command: >
+    qm set {{ template_vmid }}
+    --ipconfig0 {{ template_ci_ipconfig }}
+  become: true
+  register: ipconfig_result
+
+- name: Display cloud-init configuration result
+  debug:
+    msg: "cloud-init configured for VM {{ template_vmid }}"

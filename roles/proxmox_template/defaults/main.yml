@@ -1,0 +1,39 @@
+---
+# Distribution to build (rocky9, rocky10, debian12)
+template_distribution: rocky9
+
+# Proxmox configuration
+proxmox_storage: local-lvm
+proxmox_bridge: vmbr0
+
+# VM hardware configuration
+template_memory: 4096
+template_balloon: 1
+template_cores: 4
+template_cpu_type: host
+template_numa: 1
+template_bios: ovmf
+template_machine: q35
+
+# Disk configuration
+template_disk_size: 8G
+template_disk_controller: virtio-scsi-pci
+template_disk_options: discard=on
+
+# Network configuration
+template_network_model: virtio
+template_network_mtu: 1
+
+# cloud-init configuration
+template_ci_user: "{{ ansible_user_id }}"
+template_ci_sshkeys: "{{ ansible_user_dir }}/.ssh/authorized_keys"
+template_ci_ipconfig: "ip=dhcp"
+
+# Agent
+template_qemu_agent: 1
+
+# Working directory for downloads
+template_work_dir: "/tmp/proxmox-templates"
+
+# Cleanup downloaded images after template creation
+template_cleanup: true

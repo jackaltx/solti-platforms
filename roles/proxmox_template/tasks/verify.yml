@@ -1,0 +1,20 @@
+---
+# Verify template was created successfully
+
+- name: Get list of all VMs and templates
+  command: qm list
+  become: true
+  register: qm_list
+  changed_when: false
+
+- name: Check if template exists
+  assert:
+    that:
+      - "template_vmid | string in qm_list.stdout"
+      - "template_name in qm_list.stdout"
+    fail_msg: "Template {{ template_vmid }} ({{ template_name }}) not found"
+    success_msg: "Template {{ template_vmid }} ({{ template_name }}) verified successfully"
+
+- name: Display verification result
+  debug:
+    msg: "✓ Template {{ template_name }} is ready for cloning"
