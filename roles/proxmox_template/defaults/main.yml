@@ -29,7 +29,7 @@ template_network_mtu: 1
 
 # cloud-init configuration
 template_ci_user: "{{ ansible_user_id }}"
-template_ci_sshkeys: "{{ ansible_user_dir }}/.ssh/authorized_keys"
+template_ci_sshkeys: "{{ lookup('file', ansible_user_dir + '/.ssh/id_ed25519.pub') }}"
 template_ci_ipconfig: "ip=dhcp"
 
 # Agent

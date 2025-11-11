@@ -15,12 +15,34 @@
   become: true
   register: ciuser_result
 
+- name: Create temporary file for SSH keys
+  ansible.builtin.tempfile:
+    state: file
+    suffix: .pub
+  register: sshkey_tempfile
+
+- name: Write SSH key to temporary file
+  ansible.builtin.copy:
+    content: "{{ template_ci_sshkeys }}\n"
+    dest: "{{ sshkey_tempfile.path }}"
+    mode: "0600"
+  become: true
+
 - name: Set SSH keys for cloud-init
-  command: >
-    qm set {{ template_vmid }}
-    --sshkeys {{ template_ci_sshkeys }}
+  command:
+    argv:
+      - qm
+      - set
+      - "{{ template_vmid }}"
+      - --sshkeys
+      - "{{ sshkey_tempfile.path }}"
   become: true
   register: sshkeys_result
+
+- name: Remove temporary SSH key file
+  ansible.builtin.file:
+    path: "{{ sshkey_tempfile.path }}"
+    state: absent
 
 - name: Set IP configuration
   command: >

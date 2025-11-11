@@ -5,20 +5,16 @@
 - name: Check for image updates
   ansible.builtin.include_tasks: check_for_update.yml
 
-- name: Stop if image is current and force flag not set
-  ansible.builtin.fail:
-    msg: >-
-      Image is current (checksum matches remote).
-      Local: {{ local_image.stat.checksum | default('N/A') }}
-      Remote: {{ remote_checksum }}
-      Use -e template_force_download=true to rebuild with same version.
+- name: Skip download if image is current
+  ansible.builtin.debug:
+    msg: "Using cached image (checksum matches remote)"
   when:
     - not image_needs_update
-    - not (template_force_download | default(false))
+    - local_image.stat.exists
 
 - name: Display force download notice
   ansible.builtin.debug:
-    msg: "Force download enabled - downloading even though checksums match"
+    msg: "Force download enabled - re-downloading even though checksums match"
   when:
     - not image_needs_update
     - template_force_download | default(false)
@@ -34,8 +30,10 @@
     dest: "{{ template_work_dir }}/{{ template_image_file }}"
     mode: "0644"
   become: true
+  when: image_needs_update or (template_force_download | default(false))
   register: download_result
 
 - name: Display download status
   ansible.builtin.debug:
     msg: "Image downloaded: {{ template_image_file }}"
+  when: download_result is changed
