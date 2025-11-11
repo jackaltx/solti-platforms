@@ -1,19 +1,40 @@
 ---
 # Download cloud image from distribution URL
+# Validates against remote checksum before downloading
 
-- name: Check if image already exists
-  stat:
-    path: "{{ template_work_dir }}/{{ template_image_file }}"
-  register: image_file
+- name: Check for image updates
+  ansible.builtin.include_tasks: check_for_update.yml
+
+- name: Stop if image is current and force flag not set
+  ansible.builtin.fail:
+    msg: >-
+      Image is current (checksum matches remote).
+      Local: {{ local_image.stat.checksum | default('N/A') }}
+      Remote: {{ remote_checksum }}
+      Use -e template_force_download=true to rebuild with same version.
+  when:
+    - not image_needs_update
+    - not (template_force_download | default(false))
+
+- name: Display force download notice
+  ansible.builtin.debug:
+    msg: "Force download enabled - downloading even though checksums match"
+  when:
+    - not image_needs_update
+    - template_force_download | default(false)
+
+- name: Display update notice
+  ansible.builtin.debug:
+    msg: "Update available - downloading new image version"
+  when: image_needs_update
 
 - name: Download {{ template_distribution }} cloud image
-  get_url:
+  ansible.builtin.get_url:
     url: "{{ template_image_url }}"
     dest: "{{ template_work_dir }}/{{ template_image_file }}"
-    mode: '0644'
-  when: not image_file.stat.exists
+    mode: "0644"
   register: download_result
 
 - name: Display download status
-  debug:
-    msg: "Image {{ 'downloaded' if download_result.changed else 'already exists' }}"
+  ansible.builtin.debug:
+    msg: "Image downloaded: {{ template_image_file }}"

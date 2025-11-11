@@ -40,3 +40,6 @@ template_work_dir: "/tmp/proxmox-templates"
 
 # Cleanup downloaded images after template creation
 template_cleanup: true
+
+# Force download even if image checksums match
+template_force_download: false

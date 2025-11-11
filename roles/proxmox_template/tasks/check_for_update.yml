@@ -1,0 +1,53 @@
+---
+# Check if cloud image has been updated on remote server
+# Compares remote checksum vs local cached image checksum
+
+- name: Check if local image exists
+  ansible.builtin.stat:
+    path: "{{ template_work_dir }}/{{ template_image_file }}"
+    checksum_algorithm: "{{ template_checksum_algorithm }}"
+  register: local_image
+
+- name: Download remote checksum file
+  ansible.builtin.get_url:
+    url: "{{ template_checksum_url }}"
+    dest: "/tmp/{{ template_distribution }}-checksum.txt"
+    mode: "0644"
+  register: checksum_download
+
+- name: Extract remote checksum for our image
+  ansible.builtin.shell: |
+    grep "{{ template_image_file }}" /tmp/{{ template_distribution }}-checksum.txt | awk '{print $1}'
+  register: remote_checksum_raw
+  changed_when: false
+
+- name: Clean up checksum file
+  ansible.builtin.file:
+    path: "/tmp/{{ template_distribution }}-checksum.txt"
+    state: absent
+
+- name: Set remote checksum fact
+  ansible.builtin.set_fact:
+    remote_checksum: "{{ remote_checksum_raw.stdout | lower | trim }}"
+
+- name: Determine update status
+  ansible.builtin.set_fact:
+    image_needs_update: "{{ not local_image.stat.exists or (local_image.stat.checksum | lower) != remote_checksum }}"
+    image_status: >-
+      {% if not local_image.stat.exists %}
+      No local image found
+      {% elif (local_image.stat.checksum | lower) == remote_checksum %}
+      Current (checksum matches)
+      {% else %}
+      Update available (checksum mismatch)
+      {% endif %}
+
+- name: Display update status
+  ansible.builtin.debug:
+    msg:
+      - "Distribution: {{ template_distribution }}"
+      - "Image: {{ template_image_file }}"
+      - "Status: {{ image_status }}"
+      - "Local checksum:  {{ local_image.stat.checksum | default('N/A') }}"
+      - "Remote checksum: {{ remote_checksum }}"
+      - "Update needed: {{ image_needs_update }}"

@@ -26,8 +26,14 @@ This collection manages platform creation (VMs, K3s clusters) for the SOLTI test
 # Destroy template
 ./manage-platform.sh proxmox_template destroy -e template_distribution=rocky9
 
+# Check for image updates
+./platform-exec.sh proxmox_template check_for_update -e template_distribution=rocky9
+
 # Verify template
 ./platform-exec.sh proxmox_template verify -e template_distribution=rocky9
+
+# Force rebuild with same image version
+./manage-platform.sh proxmox_template build -e template_distribution=rocky9 -e template_force_download=true
 ```
 
 ### Supported Distributions

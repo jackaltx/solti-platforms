@@ -21,6 +21,10 @@ Platform creation and provisioning for the SOLTI ecosystem. Creates VMs, K3s clu
 # Run specific tasks
 ./platform-exec.sh proxmox_template verify -e template_distribution=rocky9
 ./platform-exec.sh -K proxmox_template cleanup -e template_distribution=debian12
+./platform-exec.sh proxmox_template check_for_update -e template_distribution=rocky9
+
+# Force rebuild with same image version
+./manage-platform.sh proxmox_template build -e template_distribution=rocky9 -e template_force_download=true
 
 # Verify templates (direct)
 sudo qm list | grep template

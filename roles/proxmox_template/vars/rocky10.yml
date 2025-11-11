@@ -3,6 +3,8 @@
 template_vmid: 7001
 template_name: rocky10-template
 template_os_type: l26
-template_image_url: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud.latest.x86_64.qcow2"
-template_image_file: "Rocky-10-GenericCloud.latest.x86_64.qcow2"
+template_image_url: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
+template_image_file: "Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
+template_checksum_url: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2.CHECKSUM"
+template_checksum_algorithm: sha256
 template_tags: "rocky-template,rocky10,cloudinit"
