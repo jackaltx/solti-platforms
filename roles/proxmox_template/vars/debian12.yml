@@ -1,6 +1,6 @@
 ---
 # Debian 12 template configuration
-template_vmid: 8000
+template_vmid_base: 8000  # Base for VMID range (8000-8999). Each build increments: 8001, 8002, 8003, etc.
 template_name: debian12-template
 template_os_type: l26
 template_image_url: "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-genericcloud-amd64.qcow2"

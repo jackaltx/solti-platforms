@@ -1,0 +1,100 @@
+---
+# Clone latest Debian 12 template and resize disk to 20G
+# Usage: ansible-playbook -K -i inventory/inventory.yml playbooks/clone-debian12-test.yml
+
+- name: Clone latest Debian 12 template
+  hosts: proxmox_vm_platform
+  become: true
+
+  vars:
+    clone_vmid: 500 # Target VMID for new clone
+    clone_name: "debian12-JKL"
+    clone_disk_size: "20G"
+    template_vmid_range_start: 8000 # Debian templates start at 8000
+    template_vmid_range_end: 8999 # Debian templates end at 8999
+
+  tasks:
+    - name: Get all VMs and templates from Proxmox API
+      ansible.builtin.command:
+        cmd: pvesh get /cluster/resources --type vm --output-format json
+      register: pvesh_output
+      changed_when: false
+
+    - name: Parse JSON to find latest Debian 12 template
+      ansible.builtin.set_fact:
+        vm_list: "{{ pvesh_output.stdout | from_json }}"
+
+    - name: Find latest Debian 12 template in VMID range
+      ansible.builtin.set_fact:
+        debian_templates: >-
+          {{
+            vm_list
+            | selectattr('template', 'equalto', 1)
+            | selectattr('vmid', '>=', template_vmid_range_start)
+            | selectattr('vmid', '<=', template_vmid_range_end)
+            | selectattr('tags', 'defined')
+            | selectattr('tags', 'search', 'debian')
+            | sort(attribute='vmid', reverse=true)
+          }}
+
+    - name: Get latest template VMID
+      ansible.builtin.set_fact:
+        latest_debian_template: "{{ debian_templates[0].vmid }}"
+        latest_template_name: "{{ debian_templates[0].name }}"
+
+    - name: Display latest Debian 12 template information
+      ansible.builtin.debug:
+        msg:
+          - "Latest Debian 12 template: {{ latest_template_name }}"
+          - "VMID: {{ latest_debian_template }}"
+          - "Tags: {{ debian_templates[0].tags }}"
+
+    - name: Clone template to new VMID (linked clone)
+      ansible.builtin.command:
+        cmd: "qm clone {{ latest_debian_template }} {{ clone_vmid }} --name {{ clone_name }} --full 0"
+      register: clone_result
+      changed_when: clone_result.rc == 0
+
+    - name: Get VM configuration to find boot disk
+      ansible.builtin.command:
+        cmd: "qm config {{ clone_vmid }}"
+      register: vm_config_pre
+      changed_when: false
+
+    - name: Extract boot disk name from configuration
+      ansible.builtin.set_fact:
+        boot_disk: "{{ vm_config_pre.stdout_lines | select('match', '^boot:.*') | first | regex_search('order=([^,;]+)', '\\1') | first }}"
+
+    - name: Display boot disk info
+      ansible.builtin.debug:
+        msg:
+          - "Boot disk: {{ boot_disk }}"
+          - "Current config: {{ vm_config_pre.stdout_lines | select('match', '^' + boot_disk + ':.*') | first }}"
+
+    - name: Resize disk to {{ clone_disk_size }}
+      ansible.builtin.command:
+        cmd: "qm disk resize {{ clone_vmid }} {{ boot_disk }} {{ clone_disk_size }}"
+      register: resize_result
+      changed_when: resize_result.rc == 0
+
+    - name: Display resize result
+      ansible.builtin.debug:
+        msg: "{{ resize_result.stdout }}"
+
+    - name: Display clone information
+      ansible.builtin.debug:
+        msg:
+          - "Cloned from template: {{ latest_template_name }} ({{ latest_debian_template }})"
+          - "New VM ID: {{ clone_vmid }}"
+          - "New VM name: {{ clone_name }}"
+          - "Disk size: {{ clone_disk_size }}"
+
+    - name: Get new VM configuration
+      ansible.builtin.command:
+        cmd: "qm config {{ clone_vmid }}"
+      register: vm_config
+      changed_when: false
+
+    - name: Display VM configuration
+      ansible.builtin.debug:
+        var: vm_config.stdout_lines

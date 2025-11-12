@@ -15,8 +15,8 @@
 
 - name: Set VMID range based on base VMID from vars
   ansible.builtin.set_fact:
-    vmid_range_start: "{{ template_vmid }}"
-    vmid_range_end: "{{ template_vmid | int + 999 }}"
+    vmid_range_start: "{{ template_vmid_base }}"
+    vmid_range_end: "{{ template_vmid_base | int + 999 }}"
 
 - name: Find existing VMIDs in range for this distribution
   ansible.builtin.set_fact:

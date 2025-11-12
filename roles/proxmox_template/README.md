@@ -16,11 +16,11 @@ Based on existing shell scripts:
 
 ## Supported Distributions
 
-| Distribution | VMID | cloud-init | Status |
-|--------------|------|------------|--------|
-| Rocky Linux 9.x | 7000 | ✅ | Ready |
-| Rocky Linux 10.x | 7001 | ✅ | Ready |
-| Debian 12 | 9001 | ✅ | Ready |
+| Distribution | VMID Range | cloud-init | Status |
+|--------------|------------|------------|--------|
+| Rocky Linux 9.x | 7000-7999 | ✅ | Ready |
+| Rocky Linux 10.x | 10000-10999 | ✅ | Ready |
+| Debian 12 | 8000-8999 | ✅ | Ready |
 
 ## Requirements
 
@@ -93,24 +93,26 @@ Located in `vars/<distribution>.yml`:
 
 ### Rocky 9.x (`vars/rocky9.yml`)
 ```yaml
-template_vmid: 7000
+template_vmid_base: 7000  # Base for VMID range (7000-7999)
 template_name: rocky9-template
 template_image_url: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2"
 ```
 
 ### Rocky 10.x (`vars/rocky10.yml`)
 ```yaml
-template_vmid: 7001
+template_vmid_base: 10000  # Base for VMID range (10000-10999)
 template_name: rocky10-template
 template_image_url: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud.latest.x86_64.qcow2"
 ```
 
 ### Debian 12 (`vars/debian12.yml`)
 ```yaml
-template_vmid: 9001
+template_vmid_base: 8000  # Base for VMID range (8000-8999)
 template_name: debian12-template
 template_image_url: "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-generic-amd64.qcow2"
 ```
+
+**Note**: Each template build auto-increments the VMID within its range. The role finds the highest existing VMID in the range and adds 1. VMID numbers are independent of OS version - use `check_for_update` task to detect when new upstream images are available.
 
 ## Dependencies
 

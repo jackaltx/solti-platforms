@@ -1,6 +1,6 @@
 ---
 # Rocky Linux 9.x template configuration
-template_vmid: 7000
+template_vmid_base: 7000  # Base for VMID range (7000-7999). Each build increments: 7001, 7002, 7003, etc.
 template_name: rocky9-template
 template_os_type: l26
 template_image_url: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2"

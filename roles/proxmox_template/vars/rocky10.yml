@@ -1,6 +1,6 @@
 ---
 # Rocky Linux 10.x template configuration
-template_vmid: 10000
+template_vmid_base: 10000  # Base for VMID range (10000-10999). Each build increments: 10001, 10002, 10003, etc.
 template_name: rocky10-template
 template_os_type: l26
 template_image_url: "https://dl.rockylinux.org/pub/rocky/10/images/x86_64/Rocky-10-GenericCloud-Base.latest.x86_64.qcow2"
