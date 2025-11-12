@@ -174,7 +174,7 @@ cd ../solti-monitoring
   - README.md - Role documentation
 
 ### Inventory
-- **inventory/platforms.yml** - Platform configuration (role-centric groups)
+- **inventory/inventory.yml** - Platform configuration (central registry + capability groups)
 
 ### Generated Files
 - **tmp/** - Dynamic playbooks (auto-cleaned on success, preserved on failure)
@@ -249,7 +249,7 @@ ls -lh /tmp/proxmox-templates/
 3. Include verify.yml task file
 4. Document in role README.md
 5. Add platform to `SUPPORTED_PLATFORMS` in both scripts
-6. Update [inventory/platforms.yml](inventory/platforms.yml) with new platform group
+6. Update [inventory/inventory.yml](inventory/inventory.yml) with new platform group
 7. Update collection README.md
 
 ### Code Style
@@ -338,11 +338,20 @@ df -h /tmp
 
 ## Changelog
 
+**2025-11-11**: Converged inventory and script patterns
+- Added `-h HOST` option to [manage-platform.sh](manage-platform.sh) for targeting individual hosts
+- Added `-h HOST` option to [../solti-containers/manage-svc.sh](../solti-containers/manage-svc.sh)
+- Added user confirmation prompts to both scripts
+- Renamed [inventory/inventory.yml](inventory/inventory.yml) (was platforms.yml)
+- Implemented central host registry pattern: top-level `platforms` group with capability children
+- Hosts now inherit all group vars when targeted individually
+- Updated all documentation references
+
 **2025-11-11**: Dynamic playbook pattern implemented
 - Created [manage-platform.sh](manage-platform.sh) for state-based management
 - Created [platform-exec.sh](platform-exec.sh) for task execution
 - Removed static playbooks (build-all-templates.yml, build-single-template.yml)
-- Updated inventory: [inventory/proxmox.yml](inventory/proxmox.yml) → [inventory/platforms.yml](inventory/platforms.yml)
+- Updated inventory: [inventory/proxmox.yml](inventory/proxmox.yml) → [inventory/inventory.yml](inventory/inventory.yml)
 - Added `--all-distros` flag for batch template builds
 - Documentation updated for dynamic pattern
 

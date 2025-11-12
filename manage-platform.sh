@@ -2,10 +2,11 @@
 #
 # manage-platform - Manage platforms using dynamically generated Ansible playbooks
 #
-# Usage: manage-platform <platform> <action> [options]
+# Usage: manage-platform [-h HOST] <platform> <action> [options]
 #
 # Example:
 #   manage-platform proxmox_template build -e template_distribution=rocky9
+#   manage-platform -h magic proxmox_template build -e template_distribution=rocky9
 #   manage-platform proxmox_template build --all-distros
 #   manage-platform proxmox_template destroy -e template_distribution=rocky9
 
@@ -14,8 +15,9 @@ set -e
 
 # Configuration
 ANSIBLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INVENTORY="${ANSIBLE_DIR}/inventory/platforms.yml"
+INVENTORY="${ANSIBLE_DIR}/inventory/inventory.yml"
 TEMP_DIR="${ANSIBLE_DIR}/tmp"
+HOST=""
 
 # Ensure temp directory exists
 mkdir -p "${TEMP_DIR}"
@@ -54,7 +56,10 @@ ALL_DISTROS=(
 
 # Display usage information
 usage() {
-    echo "Usage: $(basename $0) <platform> <action> [options]"
+    echo "Usage: $(basename $0) [-h HOST] <platform> <action> [options]"
+    echo ""
+    echo "Options:"
+    echo "  -h HOST          - Target specific host from inventory (default: uses all hosts in platform group)"
     echo ""
     echo "Platforms:"
     for platform in "${SUPPORTED_PLATFORMS[@]}"; do
@@ -66,12 +71,13 @@ usage() {
         echo "  - $action"
     done
     echo ""
-    echo "Options:"
+    echo "Additional Options:"
     echo "  --all-distros    - Process all distributions (rocky9, rocky10, debian12)"
     echo "  -e VAR=VALUE     - Set extra variables (e.g., -e template_distribution=rocky9)"
     echo ""
     echo "Examples:"
     echo "  $(basename $0) proxmox_template build -e template_distribution=rocky9"
+    echo "  $(basename $0) -h magic proxmox_template build -e template_distribution=rocky9"
     echo "  $(basename $0) proxmox_template build --all-distros"
     echo "  $(basename $0) proxmox_template destroy -e template_distribution=rocky9"
     exit 1
@@ -99,24 +105,28 @@ is_action_supported() {
     return 1
 }
 
-# Claude:
-# I think this is really cool but is put it to ALL hosts of that type. 
-# I do want the details to be in the inventory, but I want to be able to target a single host.
-# The trick is to get all the required configuration variables from an inventory that is focused on capability.
-# for example  vmid  1001  and 1002 both have a client,  but 1002 has service. when I rerun to install the client...both are run. 
-
 # Generate playbook from template
 generate_playbook() {
     local platform="$1"
     local action="$2"
     local state="${STATE_MAP[$action]}"
+    local host_param=""
+
+    # Add host specification if provided
+    if [[ -n "$HOST" ]]; then
+        host_param="hosts: $HOST"
+    else
+        host_param="hosts: ${platform}_platform"
+    fi
 
     # Create playbook directly with the proper substitutions
     cat > "$TEMP_PLAYBOOK" << EOF
 ---
+# Dynamically generated playbook
 # Works for: build, destroy, create, remove
 - name: Manage ${platform} Platform
-  hosts: ${platform}_platform
+  $host_param
+  become: true
   vars:
     ${platform}_state: ${state}
   roles:
@@ -139,6 +149,11 @@ execute_playbook() {
     # Display execution info
     echo "Managing platform: $platform"
     echo "Action: $action"
+    if [[ -n "$HOST" ]]; then
+        echo "Target host: $HOST"
+    else
+        echo "Target hosts: ${platform}_platform (from inventory)"
+    fi
     echo "Using generated playbook: $TEMP_PLAYBOOK"
     if [[ ${#extra_args[@]} -gt 0 ]]; then
         echo "Extra arguments: ${extra_args[*]}"
@@ -151,6 +166,13 @@ execute_playbook() {
     cat "${TEMP_PLAYBOOK}"
     echo "----------------"
     echo ""
+
+    # Ask for confirmation
+    read -p "Execute this playbook? [Y/n]: " confirm
+    if [[ "$confirm" =~ ^[Nn] ]]; then
+        echo "Operation cancelled"
+        exit 0
+    fi
 
     # Always use sudo for all states
     echo "Executing with sudo privileges: ansible-playbook -K -i ${INVENTORY} ${TEMP_PLAYBOOK} ${extra_args[*]}"
@@ -174,6 +196,26 @@ execute_playbook() {
         return 1
     fi
 }
+
+# Parse command line arguments
+while getopts "h:" opt; do
+    case ${opt} in
+        h)
+            HOST=$OPTARG
+            ;;
+        \?)
+            echo "Invalid option: -$OPTARG" >&2
+            usage
+            ;;
+        :)
+            echo "Option -$OPTARG requires an argument." >&2
+            usage
+            ;;
+    esac
+done
+
+# Shift past the options
+shift $((OPTIND - 1))
 
 # Validate minimum arguments
 if [[ $# -lt 2 ]]; then

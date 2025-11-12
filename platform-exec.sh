@@ -14,7 +14,7 @@ set -e
 
 # Configuration
 ANSIBLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INVENTORY="${ANSIBLE_DIR}/inventory/platforms.yml"
+INVENTORY="${ANSIBLE_DIR}/inventory/inventory.yml"
 TEMP_DIR="${ANSIBLE_DIR}/tmp"
 
 # Ensure temp directory exists

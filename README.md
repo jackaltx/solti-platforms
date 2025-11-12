@@ -18,9 +18,9 @@ This collection manages platform creation (VMs, K3s clusters) for the SOLTI test
 
 **IMPORTANT**: Templates are built ON the Proxmox server, not localhost.
 
-1. Edit `inventory/platforms.yml`
-2. Uncomment `magic:` (or add your Proxmox host)
-3. Ensure host defined in `inventory.yml`
+1. Edit `inventory/inventory.yml`
+2. Add your Proxmox host to the `platforms` registry
+3. Add host to `proxmox_template_platform` capability group
 
 ### Build Proxmox Templates
 

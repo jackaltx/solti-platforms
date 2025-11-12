@@ -1,0 +1,89 @@
+---
+# Platform inventory for solti-platforms collection
+# Used by manage-platform.sh and platform-exec.sh
+#
+# Pattern: Central host registry + capability groups
+# - Top level 'platforms' group = central host registry (all known platform hosts)
+# - Children groups = capabilities (what each host can do)
+# - Hosts can belong to multiple capability groups
+# - When targeting specific host with -h, it inherits all group vars from its capability groups
+
+all:
+  children:
+    # ============================================
+    # Central Host Registry
+    # All known platform hosts go here
+    # ============================================
+    platforms:
+      hosts:
+        magic:
+          # Proxmox server for template/VM creation
+      vars:
+        # Common platform variables (if any)
+
+      children:
+        # ========================================
+        # Capability: Proxmox Template Creation
+        # Hosts that can build Proxmox templates
+        # ========================================
+        proxmox_template_platform:
+          hosts:
+            magic:
+          vars:
+            # Proxmox configuration
+            proxmox_storage: local-lvm
+            proxmox_bridge: vmbr0
+            template_work_dir: /opt/solti/qcow
+            template_cleanup: false
+
+        # ========================================
+        # Capability: Proxmox VM Management (Phase 2)
+        # Hosts that can create/manage VMs
+        # ========================================
+        proxmox_vm_platform:
+          hosts:
+            magic:
+          vars:
+            proxmox_storage: local-lvm
+            proxmox_bridge: vmbr0
+
+        # ========================================
+        # Capability: Platform Base Provisioning (Phase 3)
+        # Hosts that receive common provisioning
+        # ========================================
+        platform_base_platform:
+          hosts:
+            # Add your target hosts here
+          vars:
+            # Common provisioning variables
+
+        # ========================================
+        # Capability: Linode Instance Management (Phase 4)
+        # Runs on localhost to manage Linode API
+        # ========================================
+        linode_instance_platform:
+          hosts:
+            localhost:
+              ansible_connection: local
+          vars:
+            # Linode API configuration
+
+        # ========================================
+        # Capability: K3s Control Plane (Phase 5)
+        # Hosts that run K3s control plane
+        # ========================================
+        k3s_control_platform:
+          hosts:
+            # Add your k3s control plane hosts here
+          vars:
+            # K3s control plane variables
+
+        # ========================================
+        # Capability: K3s Worker Nodes (Phase 5)
+        # Hosts that run K3s worker nodes
+        # ========================================
+        k3s_worker_platform:
+          hosts:
+            # Add your k3s worker hosts here
+          vars:
+            # K3s worker variables
