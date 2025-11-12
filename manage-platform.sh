@@ -99,6 +99,12 @@ is_action_supported() {
     return 1
 }
 
+# Claude:
+# I think this is really cool but is put it to ALL hosts of that type. 
+# I do want the details to be in the inventory, but I want to be able to target a single host.
+# The trick is to get all the required configuration variables from an inventory that is focused on capability.
+# for example  vmid  1001  and 1002 both have a client,  but 1002 has service. when I rerun to install the client...both are run. 
+
 # Generate playbook from template
 generate_playbook() {
     local platform="$1"

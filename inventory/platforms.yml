@@ -5,6 +5,9 @@
 # IMPORTANT: Add your Proxmox server(s) to proxmox_template_platform group
 # These tasks run ON the Proxmox host, not localhost
 
+# Claude: I love the idea, but the functionality...the children at this level are "capabilities", which can be applied to a all hosts
+# if we target a specic host will it get all the group vars (proxmox_storage,..)?
+
 all:
   children:
     # Proxmox template platform
