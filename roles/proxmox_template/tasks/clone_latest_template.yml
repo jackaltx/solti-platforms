@@ -1,0 +1,116 @@
+---
+# Clone latest template for a distribution and configure VM
+#
+# This task combines template discovery, cloning, and optional configuration
+# into a single reusable workflow. Uses pvesh for discovery and qm for operations.
+#
+# Required variables:
+#   template_distribution: Distribution name (rocky9, debian12, rocky10)
+#   clone_vmid: Target VMID for the new clone
+#   clone_name: Name for the cloned VM
+#
+# Optional variables:
+#   clone_ip: Static IP address (e.g., "192.168.101.90")
+#   clone_gateway: Gateway IP (e.g., "192.168.101.254")
+#   clone_netmask: CIDR netmask (default: 24)
+#   clone_disk_size: Disk size to resize to (e.g., "20G")
+#   clone_full: 0=linked clone (default), 1=full clone
+#   clone_cores: Number of CPU cores (optional)
+#   clone_memory: Memory in MB (optional)
+#
+# Output variables:
+#   latest_template_vmid: VMID of source template
+#   latest_template_name: Name of source template
+#   boot_disk: Name of boot disk (if resize performed)
+#
+# Usage:
+#   - include_role:
+#       name: jackaltx.solti_platforms.proxmox_template
+#       tasks_from: clone_latest_template
+#     vars:
+#       template_distribution: debian12
+#       clone_vmid: 500
+#       clone_name: "test-vm"
+#       clone_ip: "192.168.101.90"
+#       clone_gateway: "192.168.101.254"
+#       clone_disk_size: "20G"
+
+- name: Find latest template for distribution
+  ansible.builtin.include_tasks: find_latest_template.yml
+
+- name: Clone template using qm
+  ansible.builtin.shell:
+    cmd: "sudo qm clone {{ latest_template_vmid }} {{ clone_vmid }} --name {{ clone_name }} --full {{ clone_full | default(0) }}"
+  register: clone_result
+  changed_when: clone_result.rc == 0
+
+- name: Wait for clone operation to complete
+  ansible.builtin.pause:
+    seconds: 5
+
+- name: Configure cloud-init network (static IP)
+  ansible.builtin.shell:
+    cmd: "sudo qm set {{ clone_vmid }} --ipconfig0 'ip={{ clone_ip }}/{{ clone_netmask | default(24) }},gw={{ clone_gateway }}'"
+  when:
+    - clone_ip is defined
+    - clone_gateway is defined
+  register: network_result
+  changed_when: network_result.rc == 0
+
+- name: Set CPU cores
+  ansible.builtin.shell:
+    cmd: "sudo qm set {{ clone_vmid }} --cores {{ clone_cores }}"
+  when: clone_cores is defined
+  register: cores_result
+  changed_when: cores_result.rc == 0
+
+- name: Set memory
+  ansible.builtin.shell:
+    cmd: "sudo qm set {{ clone_vmid }} --memory {{ clone_memory }}"
+  when: clone_memory is defined
+  register: memory_result
+  changed_when: memory_result.rc == 0
+
+- name: Resize disk block
+  when: clone_disk_size is defined
+  block:
+    - name: Get VM config to find boot disk
+      ansible.builtin.shell:
+        cmd: "sudo qm config {{ clone_vmid }}"
+      register: vm_config
+      changed_when: false
+
+    - name: Extract boot disk name from configuration
+      ansible.builtin.set_fact:
+        boot_disk: "{{ vm_config.stdout_lines | select('match', '^boot:.*') | first | regex_search('order=([^,;]+)', '\\1') | first }}"
+
+    - name: Display boot disk info
+      ansible.builtin.debug:
+        msg:
+          - "Boot disk detected: {{ boot_disk }}"
+          - "Current config: {{ vm_config.stdout_lines | select('match', '^' + boot_disk + ':.*') | first }}"
+        verbosity: 1
+
+    - name: Resize boot disk
+      ansible.builtin.shell:
+        cmd: "sudo qm disk resize {{ clone_vmid }} {{ boot_disk }} {{ clone_disk_size }}"
+      register: resize_result
+      changed_when: resize_result.rc == 0
+
+    - name: Display resize result
+      ansible.builtin.debug:
+        msg: "Resized {{ boot_disk }} to {{ clone_disk_size }}: {{ resize_result.stdout }}"
+
+- name: Display clone summary
+  ansible.builtin.debug:
+    msg:
+      - "=== VM Clone Summary ==="
+      - "Source template: {{ latest_template_name }} (VMID {{ latest_template_vmid }})"
+      - "New VM ID: {{ clone_vmid }}"
+      - "New VM name: {{ clone_name }}"
+      - "Clone type: {{ 'Full' if (clone_full | default(0) == 1) else 'Linked' }}"
+      - "Network: {{ clone_ip | default('DHCP') }}{{ ('/' + (clone_netmask | default(24) | string)) if clone_ip is defined else '' }}"
+      - "Gateway: {{ clone_gateway | default('N/A') }}"
+      - "Disk size: {{ clone_disk_size | default('template default') }}"
+      - "CPU cores: {{ clone_cores | default('template default') }}"
+      - "Memory: {{ clone_memory | default('template default') }} MB"

@@ -42,6 +42,9 @@ all:
             magic:
           vars:
             # Proxmox configuration
+            # Note: pvesh/qm require root. User needs passwordless sudo configured:
+            # Run: ssh root@magic "bash -s" < docs/setup-passwordless-sudo.sh
+            ansible_user: lavender
             proxmox_storage: local-lvm
             proxmox_bridge: vmbr0
             template_work_dir: /opt/solti/qcow

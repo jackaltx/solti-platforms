@@ -1,0 +1,70 @@
+---
+# Find latest template in the distribution's VMID range
+#
+# Input variables (required):
+#   template_distribution: Distribution name (rocky9, debian12, rocky10)
+#                         This loads the vars file which defines template_vmid_base
+#
+# Output variables:
+#   latest_template_vmid: VMID of the latest template in range
+#   latest_template_name: Name of the latest template
+#
+# Usage:
+#   - include_tasks: find_latest_template.yml
+#     vars:
+#       template_distribution: debian12
+
+- name: Load distribution-specific variables
+  ansible.builtin.include_vars:
+    file: "{{ role_path }}/vars/{{ template_distribution }}.yml"
+
+- name: Get list of existing VMs via pvesh API
+  ansible.builtin.shell: sudo pvesh get /cluster/resources --type vm --output-format json
+  register: vm_list_raw
+  changed_when: false
+
+- name: Parse VM list from JSON
+  ansible.builtin.set_fact:
+    vm_list: "{{ vm_list_raw.stdout | from_json }}"
+
+- name: Set VMID range from template_vmid_base
+  ansible.builtin.set_fact:
+    vmid_range_start: "{{ template_vmid_base }}"
+    vmid_range_end: "{{ template_vmid_base | int + 999 }}"
+
+- name: Find existing templates in VMID range
+  ansible.builtin.set_fact:
+    templates_in_range: >-
+      {{ vm_list
+         | selectattr('template', 'equalto', 1)
+         | selectattr('vmid', 'defined')
+         | selectattr('vmid', '>=', vmid_range_start | int)
+         | selectattr('vmid', '<=', vmid_range_end | int)
+         | sort(attribute='vmid', reverse=true)
+         | list }}
+
+- name: Display templates found in range
+  ansible.builtin.debug:
+    msg:
+      - "Distribution: {{ template_distribution }}"
+      - "VMID range: {{ vmid_range_start }}-{{ vmid_range_end }}"
+      - "Templates found: {{ templates_in_range | length }}"
+      - "{{ templates_in_range | map(attribute='name') | list }}"
+    verbosity: 1
+
+- name: Fail if no templates found in range
+  ansible.builtin.fail:
+    msg: "No templates found in range {{ vmid_range_start }}-{{ vmid_range_end }} for {{ template_distribution }}"
+  when: templates_in_range | length == 0
+
+- name: Set latest template facts
+  ansible.builtin.set_fact:
+    latest_template_vmid: "{{ templates_in_range[0].vmid }}"
+    latest_template_name: "{{ templates_in_range[0].name }}"
+
+- name: Display latest template
+  ansible.builtin.debug:
+    msg:
+      - "Latest template for {{ template_distribution }}:"
+      - "  VMID: {{ latest_template_vmid }}"
+      - "  Name: {{ latest_template_name }}"
