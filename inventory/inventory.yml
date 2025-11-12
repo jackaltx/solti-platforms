@@ -9,6 +9,17 @@
 # - When targeting specific host with -h, it inherits all group vars from its capability groups
 
 all:
+  vars:
+    # ============================================
+    # Shared Core Variables (sync with solti-containers)
+    # These vars are consistent across all SOLTI collections
+    # ============================================
+    domain: a0a0.org
+    mylab_nolog: "{{ cluster_secure_log | bool | default(true) }}"  # Controls debug output
+    ansible_user: lavender                                           # Used by Proxmox cloud-init
+    ansible_ssh_private_key_file: ~/.ssh/id_ed25519                 # Used by Proxmox cloud-init
+    mylab_non_ssh: false                                            # LXC container flag
+
   children:
     # ============================================
     # Central Host Registry

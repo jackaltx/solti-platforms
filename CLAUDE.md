@@ -175,6 +175,9 @@ cd ../solti-monitoring
 
 ### Inventory
 - **inventory/inventory.yml** - Platform configuration (central registry + capability groups)
+  - **Shared core vars** (sync with solti-containers): domain, mylab_nolog, ansible_user, ansible_ssh_private_key_file, mylab_non_ssh
+  - ansible_user/key used by Proxmox cloud-init role
+  - mylab_nolog controls debug output in roles
 
 ### Generated Files
 - **tmp/** - Dynamic playbooks (auto-cleaned on success, preserved on failure)
