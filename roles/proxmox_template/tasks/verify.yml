@@ -1,6 +1,7 @@
 ---
 # Verify template was created successfully
 
+# this must be run as root!
 - name: Get list of all VMs and templates
   command: qm list
   become: true
