@@ -10,7 +10,7 @@ proxmox_storage: local-lvm
 proxmox_bridge: vmbr0
 
 # VM hardware configuration
-template_memory: 6144
+template_memory: 8192
 template_balloon: 1
 template_cores: 4
 template_cpu_type: host
@@ -29,6 +29,7 @@ template_network_mtu: 1
 
 # cloud-init configuration
 template_ci_user: "{{ ansible_user }}"
+template_ci_passwd: "changeme" # SMELL this is a stand in until I can do  better
 template_ci_sshkeys: "{{ lookup('file', ansible_ssh_private_key_file + '.pub') }}"
 template_ci_ipconfig: "ip=dhcp"
 
