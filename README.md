@@ -46,9 +46,9 @@ This collection manages platform creation (VMs, K3s clusters) for the SOLTI test
 
 ### Supported Distributions
 
-- **Rocky Linux 9.x** - VMID 7000
-- **Rocky Linux 10.x** - VMID 7001
-- **Debian 12** - VMID 9001
+- **Rocky Linux 9.x** - Starting at VMID 7000
+- **Rocky Linux 10.x** - Startung at VMID 10001
+- **Debian 12** - Starting at VMID 9001
 
 ## Roles
 
@@ -57,6 +57,7 @@ This collection manages platform creation (VMs, K3s clusters) for the SOLTI test
 Builds Proxmox VM templates from cloud images.
 
 **Features**:
+
 - Downloads cloud images (with caching)
 - Configures VM hardware (CPU, memory, disk)
 - Sets up cloud-init (SSH keys, network)
@@ -64,6 +65,7 @@ Builds Proxmox VM templates from cloud images.
 - Supports Rocky 9.x, Rocky 10.x, Debian 12
 
 **Variables**:
+
 ```yaml
 template_distribution: rocky9     # rocky9, rocky10, or debian12
 proxmox_storage: local-lvm        # Proxmox storage backend
@@ -74,6 +76,7 @@ template_disk_size: 8G            # Disk size
 ```
 
 **Usage**:
+
 ```bash
 # State-based management (uses manage-platform.sh)
 ./manage-platform.sh proxmox_template build -e template_distribution=rocky9
@@ -142,6 +145,7 @@ git clone <repo-url> ansible_collections/jackaltx/solti_platforms
 ## Configuration
 
 Edit [inventory/platforms.yml](inventory/platforms.yml) to customize:
+
 - Storage backend (`proxmox_storage`)
 - Network bridge (`proxmox_bridge`)
 - Hardware specs (memory, cores, disk)
@@ -153,6 +157,7 @@ Distribution-specific settings (VMIDs, image URLs) are in [roles/proxmox_templat
 ### Based on Existing Scripts
 
 This collection converts existing shell scripts into Ansible roles:
+
 - `build_templates_original/build-rocky9-cloud-init.sh`
 - `build_templates_original/build-deb12-cloud-init.sh`
 - `build_templates_original/fleur-create.yml`
@@ -160,6 +165,7 @@ This collection converts existing shell scripts into Ansible roles:
 ### Architecture Decision
 
 See `.claude/project-contexts/solti-platforms-decision.md` for:
+
 - Why separate collection (not expanding solti-containers)
 - Four-layer SOLTI architecture
 - CREATE → PROVISION pattern
@@ -168,6 +174,7 @@ See `.claude/project-contexts/solti-platforms-decision.md` for:
 ### Patterns from solti-containers
 
 Reuses successful patterns:
+
 - Base role for common functionality
 - Distribution-specific vars files
 - Per-role verification tasks
@@ -176,6 +183,7 @@ Reuses successful patterns:
 ## Roadmap
 
 ### Phase 1: Proxmox Templates ✅ COMPLETE
+
 - [x] Template builder role
 - [x] Rocky 9.x support
 - [x] Rocky 10.x support
@@ -184,23 +192,27 @@ Reuses successful patterns:
 - [x] Verification tasks
 
 ### Phase 2: Proxmox VMs (Next)
+
 - [ ] Clone from template
 - [ ] VM configuration
 - [ ] Start/stop/destroy
 - [ ] Integration with platform_base
 
 ### Phase 3: Base Provisioning
+
 - [ ] User management
 - [ ] SSH key setup
 - [ ] Hostname configuration
 - [ ] Base package installation
 
 ### Phase 4: Linode Integration
+
 - [ ] Instance creation
 - [ ] Provisioning
 - [ ] Destroy
 
 ### Phase 5: K3s Deployment
+
 - [ ] Control plane role
 - [ ] Worker node role
 - [ ] Cluster bootstrap
@@ -228,6 +240,7 @@ sudo qm list | grep rocky9-template
 ### Dynamic Playbooks
 
 Both scripts generate playbooks on-the-fly in `tmp/`:
+
 - **Success**: Playbook auto-deleted
 - **Failure**: Playbook preserved for debugging
 

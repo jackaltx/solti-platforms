@@ -12,6 +12,7 @@
   command: >
     qm set {{ template_vmid }}
     --ciuser {{ template_ci_user }}
+    --cipassword {{ template_ci_passwd }}
   become: true
   register: ciuser_result
 
