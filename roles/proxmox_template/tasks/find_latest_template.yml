@@ -18,6 +18,10 @@
   ansible.builtin.include_vars:
     file: "{{ role_path }}/vars/{{ template_distribution }}.yml"
 
+- name: Variables loaded from
+  ansible.builtin.debug:
+    var: template_distribution
+
 - name: Get list of existing VMs via pvesh API
   ansible.builtin.shell: sudo pvesh get /cluster/resources --type vm --output-format json
   register: vm_list_raw
