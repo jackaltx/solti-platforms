@@ -2,11 +2,30 @@
 
 **Platform creation and provisioning for the SOLTI ecosystem**
 
+This is an expriment to see if I can find a comment pattern in the
+Virtual Machine api's that I currently use,  Proxmox and Linode.
+Phased developments are a good tool for identifying how a technology
+can be harnessed for use over time.
+
+I gave Claude a broader goal of K3s, but that is in the future.
+I blew through my free Linode time. Learned quite a bit, and will
+focuse on making Proxmox better for me.  
+
+Why Proxmox? Simple, community popular and it works is the only good answer.
+It was a toss up between Proxmox and Xen XCP.
+
+I gave Claude his full head on this ansible role. It uses Ansible tasks like entry
+points into a FORTRAN program.  Invoking the entry points allow acces to the complete set of
+configuration variables. Almost like a "class variable" that the "methods" have access to.
+What this means is that have the least insight into how this works than the rest of my work.
+
+  Jackal
+
 ## Overview
 
 This collection manages platform creation (VMs, K3s clusters) for the SOLTI testing and development environment. It provides:
 
-- **Proxmox VM template building** - Rocky 9.x, Rocky 10.x, Debian 12
+- **Proxmox VM template building** - Rocky 9+, Debian 12+
 - **Proxmox VM lifecycle** - Clone, configure, start/stop, destroy (planned)
 - **Linode instance management** - Create, provision, destroy (planned)
 - **K3s cluster deployment** - Control plane + worker nodes (planned)
@@ -18,11 +37,20 @@ This collection manages platform creation (VMs, K3s clusters) for the SOLTI test
 
 **IMPORTANT**: Templates are built ON the Proxmox server, not localhost.
 
+These use an user account on the server with sudo privileges, not the proxmox api.
+
 1. Edit `inventory/inventory.yml`
 2. Add your Proxmox host to the `platforms` registry
 3. Add host to `proxmox_template_platform` capability group
 
 ### Build Proxmox Templates
+
+CLAUDE TODO: Static lists suck, lets read: roles/proxmox_template/vars
+and pull the template_name. and allow them to do a -t <template_name>
+if they forget the -t, then present the list and this help.
+This should simplify adding new distros.
+
+however I do like the --all-distros
 
 ```bash
 # Build single template (runs on Proxmox host)
@@ -46,6 +74,8 @@ This collection manages platform creation (VMs, K3s clusters) for the SOLTI test
 
 ### Supported Distributions
 
+CLAUDE:  rebuild this list...
+
 - **Rocky Linux 9.x** - Starting at VMID 7000
 - **Rocky Linux 10.x** - Startung at VMID 10001
 - **Debian 12** - Starting at VMID 9001
@@ -62,9 +92,11 @@ Builds Proxmox VM templates from cloud images.
 - Configures VM hardware (CPU, memory, disk)
 - Sets up cloud-init (SSH keys, network)
 - Converts to reusable template
-- Supports Rocky 9.x, Rocky 10.x, Debian 12
+- Supports Rocky 9+, Debian 12+
 
 **Variables**:
+
+Claude gnerate a clickable list of what template files are in that vars dir
 
 ```yaml
 template_distribution: rocky9     # rocky9, rocky10, or debian12
@@ -76,6 +108,10 @@ template_disk_size: 8G            # Disk size
 ```
 
 **Usage**:
+
+The two script manage-platorm.sh and platform-exec.sh create dynamic ansible playbooks.
+It keeps the playbook creep to a minimum. At the core, all of this is ansible and can
+be used in your playbooks.
 
 ```bash
 # State-based management (uses manage-platform.sh)
@@ -152,35 +188,7 @@ Edit [inventory/platforms.yml](inventory/platforms.yml) to customize:
 
 Distribution-specific settings (VMIDs, image URLs) are in [roles/proxmox_template/vars/](roles/proxmox_template/vars/)
 
-## Development
-
-### Based on Existing Scripts
-
-This collection converts existing shell scripts into Ansible roles:
-
-- `build_templates_original/build-rocky9-cloud-init.sh`
-- `build_templates_original/build-deb12-cloud-init.sh`
-- `build_templates_original/fleur-create.yml`
-
-### Architecture Decision
-
-See `.claude/project-contexts/solti-platforms-decision.md` for:
-
-- Why separate collection (not expanding solti-containers)
-- Four-layer SOLTI architecture
-- CREATE → PROVISION pattern
-- Integration with other collections
-
-### Patterns from solti-containers
-
-Reuses successful patterns:
-
-- Base role for common functionality
-- Distribution-specific vars files
-- Per-role verification tasks
-- Comprehensive documentation
-
-## Roadmap
+## Develoment Roadmap
 
 ### Phase 1: Proxmox Templates ✅ COMPLETE
 
@@ -191,7 +199,7 @@ Reuses successful patterns:
 - [x] cloud-init configuration
 - [x] Verification tasks
 
-### Phase 2: Proxmox VMs (Next)
+### Phase 2: Proxmox VMs (Starting Jan 2026)
 
 - [ ] Clone from template
 - [ ] VM configuration
@@ -199,6 +207,8 @@ Reuses successful patterns:
 - [ ] Integration with platform_base
 
 ### Phase 3: Base Provisioning
+
+This would be bringing an OS up to some "standard", could STIG, HIPPA,....
 
 - [ ] User management
 - [ ] SSH key setup
