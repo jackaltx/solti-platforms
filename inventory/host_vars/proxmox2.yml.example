@@ -1,0 +1,14 @@
+---
+# Example host-specific variables for proxmox2
+# Copy to proxmox2.yml and customize for your second Proxmox server
+#
+# This shows how to override defaults for different hardware/config
+
+# Proxmox configuration
+proxmox_storage: local-ssd          # Different storage backend
+proxmox_bridge: vmbr1               # Different network bridge
+
+# Template settings - more resources
+template_memory: 8192               # 8GB RAM
+template_cores: 8                   # 8 CPU cores
+template_disk_size: 16G             # Larger disk

@@ -37,12 +37,14 @@ DEFAULT_ENTRY="verify"
 USE_SUDO=false
 PLATFORM=""
 ENTRY=""
+HOST=""
 
 # Display usage information
 usage() {
-    echo "Usage: $(basename $0) [-K] <platform> [entry] [options]"
+    echo "Usage: $(basename $0) [-h HOST] [-K] <platform> [entry] [options]"
     echo ""
     echo "Options:"
+    echo "  -h HOST - Target specific host from inventory (REQUIRED for proxmox operations)"
     echo "  -K      - Prompt for sudo password (needed for some operations)"
     echo ""
     echo "Parameters:"
@@ -67,9 +69,9 @@ usage() {
     echo "  - convert_template - Convert to template"
     echo ""
     echo "Examples:"
-    echo "  $(basename $0) proxmox_template verify -e template_distribution=rocky9"
-    echo "  $(basename $0) -K proxmox_template cleanup -e template_distribution=debian12"
-    echo "  $(basename $0) proxmox_template                   # Default entry, no sudo"
+    echo "  $(basename $0) -h magic proxmox_template verify -e template_distribution=rocky9"
+    echo "  $(basename $0) -h magic -K proxmox_template cleanup -e template_distribution=debian12"
+    echo "  $(basename $0) -h proxmox2 proxmox_template                   # Default entry, no sudo"
     exit 1
 }
 
@@ -89,12 +91,29 @@ generate_exec_playbook() {
     local platform="$1"
     local entry="$2"
 
+    # Host must be specified for proxmox operations
+    if [[ "$platform" == "proxmox_template" || "$platform" == "proxmox_vm" ]]; then
+        if [[ -z "$HOST" ]]; then
+            echo "Error: -h HOST is required for ${platform} operations"
+            echo ""
+            usage
+        fi
+    fi
+
+    # Determine host parameter
+    local host_param
+    if [[ -n "$HOST" ]]; then
+        host_param="$HOST"
+    else
+        host_param="${platform}_platform"
+    fi
+
     # Create playbook directly with proper substitutions
     cat > "$TEMP_PLAYBOOK" << EOF
 ---
 # Dynamic execution playbook
 - name: Execute ${entry} for ${platform} Platform
-  hosts: ${platform}_platform
+  hosts: ${host_param}
   tasks:
     - name: Include role tasks
       ansible.builtin.include_role:
@@ -106,8 +125,11 @@ EOF
 }
 
 # Parse command line options
-while getopts "K" opt; do
+while getopts "h:K" opt; do
     case ${opt} in
+        h)
+            HOST=$OPTARG
+            ;;
         K)
             USE_SUDO=true
             ;;

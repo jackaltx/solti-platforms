@@ -5,6 +5,12 @@ template_state: present
 # Distribution to build (rocky9, rocky10, debian12)
 template_distribution: rocky9
 
+# VMID Configuration - Unified range for ALL templates
+# All templates use 9000-9999 range regardless of distribution
+# VMID is auto-calculated based on existing templates in range
+template_vmid_base: 9000
+template_vmid_max: 9999
+
 # Proxmox configuration
 proxmox_storage: local-lvm
 proxmox_bridge: vmbr0

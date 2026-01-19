@@ -37,48 +37,49 @@ This collection manages platform creation (VMs, K3s clusters) for the SOLTI test
 
 **IMPORTANT**: Templates are built ON the Proxmox server, not localhost.
 
-These use an user account on the server with sudo privileges, not the proxmox api.
+These use a user account on the server with sudo privileges, not the proxmox api.
 
 1. Edit `inventory/inventory.yml`
-2. Add your Proxmox host to the `platforms` registry
-3. Add host to `proxmox_template_platform` capability group
+2. Add your Proxmox hosts to the `proxmox_hosts` group
+3. (Optional) Create `inventory/host_vars/{hostname}.yml` for host-specific overrides
 
 ### Build Proxmox Templates
 
-CLAUDE TODO: Static lists suck, lets read: roles/proxmox_template/vars
-and pull the template_name. and allow them to do a -t <template_name>
-if they forget the -t, then present the list and this help.
-This should simplify adding new distros.
-
-however I do like the --all-distros
+Templates are auto-discovered from [roles/proxmox_template/vars/](roles/proxmox_template/vars/). Just add a new `.yml` file to support a new distribution.
 
 ```bash
-# Build single template (runs on Proxmox host)
-./manage-platform.sh proxmox_template build -e template_distribution=rocky9
+# Build single template (runs on Proxmox host) - REQUIRES -h HOST
+./manage-platform.sh -h magic -t rocky9 proxmox_template build
 
-# Build all templates (Rocky 9, Rocky 10, Debian 12)
-./manage-platform.sh proxmox_template build --all-distros
+# Build all templates on specific host (auto-discovers all templates in vars/)
+./manage-platform.sh -h magic proxmox_template build --all-distros
 
-# Destroy template
-./manage-platform.sh proxmox_template destroy -e template_distribution=rocky9
+# Destroy template on specific host
+./manage-platform.sh -h magic -t rocky9 proxmox_template destroy
 
 # Check for image updates
-./platform-exec.sh proxmox_template check_for_update -e template_distribution=rocky9
+./platform-exec.sh -h magic proxmox_template check_for_update -e template_distribution=rocky9
 
 # Verify template
-./platform-exec.sh proxmox_template verify -e template_distribution=rocky9
+./platform-exec.sh -h magic proxmox_template verify -e template_distribution=rocky9
 
 # Force rebuild with same image version
-./manage-platform.sh proxmox_template build -e template_distribution=rocky9 -e template_force_download=true
+./manage-platform.sh -h magic -t rocky9 proxmox_template build -e template_force_download=true
+
+# Forgot which templates are available?
+./manage-platform.sh
 ```
 
 ### Supported Distributions
 
-CLAUDE:  rebuild this list...
+Templates are defined in [roles/proxmox_template/vars/](roles/proxmox_template/vars/):
 
-- **Rocky Linux 9.x** - Starting at VMID 7000
-- **Rocky Linux 10.x** - Startung at VMID 10001
-- **Debian 12** - Starting at VMID 9001
+- [rocky9.yml](roles/proxmox_template/vars/rocky9.yml) - **Rocky Linux 9.x**
+- [rocky10.yml](roles/proxmox_template/vars/rocky10.yml) - **Rocky Linux 10.x**
+- [debian12.yml](roles/proxmox_template/vars/debian12.yml) - **Debian 12 (Bookworm)**
+- [debian13.yml](roles/proxmox_template/vars/debian13.yml) - **Debian 13 (Trixie)**
+
+**VMID Assignment**: All templates use unified range 9000-9999 (auto-assigned sequentially)
 
 ## Roles
 
@@ -96,10 +97,9 @@ Builds Proxmox VM templates from cloud images.
 
 **Variables**:
 
-Claude gnerate a clickable list of what template files are in that vars dir
+Common variables (set in inventory or command line):
 
 ```yaml
-template_distribution: rocky9     # rocky9, rocky10, or debian12
 proxmox_storage: local-lvm        # Proxmox storage backend
 proxmox_bridge: vmbr0             # Network bridge
 template_memory: 4096             # RAM in MB
@@ -107,20 +107,27 @@ template_cores: 4                 # CPU cores
 template_disk_size: 8G            # Disk size
 ```
 
+Distribution-specific variables (in [roles/proxmox_template/vars/](roles/proxmox_template/vars/)):
+
+- [rocky9.yml](roles/proxmox_template/vars/rocky9.yml) - Rocky Linux 9.x configuration
+- [rocky10.yml](roles/proxmox_template/vars/rocky10.yml) - Rocky Linux 10.x configuration
+- [debian12.yml](roles/proxmox_template/vars/debian12.yml) - Debian 12 configuration
+- [debian13.yml](roles/proxmox_template/vars/debian13.yml) - Debian 13 configuration
+
 **Usage**:
 
-The two script manage-platorm.sh and platform-exec.sh create dynamic ansible playbooks.
+The two scripts [manage-platform.sh](manage-platform.sh) and [platform-exec.sh](platform-exec.sh) create dynamic ansible playbooks.
 It keeps the playbook creep to a minimum. At the core, all of this is ansible and can
 be used in your playbooks.
 
 ```bash
-# State-based management (uses manage-platform.sh)
-./manage-platform.sh proxmox_template build -e template_distribution=rocky9
-./manage-platform.sh proxmox_template destroy -e template_distribution=debian12
+# State-based management (uses manage-platform.sh) - REQUIRES -h HOST
+./manage-platform.sh -h magic -t rocky9 proxmox_template build
+./manage-platform.sh -h proxmox2 -t debian12 proxmox_template destroy
 
-# Task execution (uses platform-exec.sh)
-./platform-exec.sh proxmox_template verify -e template_distribution=rocky9
-./platform-exec.sh -K proxmox_template cleanup -e template_distribution=debian12
+# Task execution (uses platform-exec.sh) - REQUIRES -h HOST
+./platform-exec.sh -h magic proxmox_template verify -e template_distribution=rocky9
+./platform-exec.sh -h magic -K proxmox_template cleanup -e template_distribution=debian12
 ```
 
 See [roles/proxmox_template/README.md](roles/proxmox_template/README.md) for details.
@@ -180,13 +187,38 @@ git clone <repo-url> ansible_collections/jackaltx/solti_platforms
 
 ## Configuration
 
-Edit [inventory/platforms.yml](inventory/platforms.yml) to customize:
+### Inventory Structure
 
-- Storage backend (`proxmox_storage`)
-- Network bridge (`proxmox_bridge`)
-- Hardware specs (memory, cores, disk)
+The inventory uses a simplified host-centric pattern:
 
-Distribution-specific settings (VMIDs, image URLs) are in [roles/proxmox_template/vars/](roles/proxmox_template/vars/)
+```yaml
+# inventory/inventory.yml
+proxmox_hosts:
+  hosts:
+    magic:            # First Proxmox server
+    proxmox2:         # Second Proxmox server (optional)
+  vars:
+    # Common defaults for ALL hosts
+    proxmox_storage: local-lvm
+    proxmox_bridge: vmbr0
+    template_vmid_base: 9000    # Unified range for all templates
+    template_vmid_max: 9999
+```
+
+### Host-Specific Overrides
+
+Create `inventory/host_vars/{hostname}.yml` for per-host customization:
+
+```yaml
+# inventory/host_vars/proxmox2.yml
+proxmox_storage: local-ssd      # Different storage
+proxmox_bridge: vmbr1           # Different bridge
+template_memory: 8192           # More RAM
+```
+
+### Distribution Settings
+
+Distribution-specific settings (image URLs, names) are in [roles/proxmox_template/vars/](roles/proxmox_template/vars/)
 
 ## Develoment Roadmap
 
@@ -232,19 +264,19 @@ This would be bringing an OS up to some "standard", could STIG, HIPPA,....
 ### Manual Testing
 
 ```bash
-# Build Rocky 9 template
-./manage-platform.sh proxmox_template build -e template_distribution=rocky9
+# Build Rocky 9 template on specific host
+./manage-platform.sh -h magic -t rocky9 proxmox_template build
 
 # Verify template exists
-./platform-exec.sh proxmox_template verify -e template_distribution=rocky9
-# Or directly:
-sudo qm list | grep rocky9-template
+./platform-exec.sh -h magic proxmox_template verify -e template_distribution=rocky9
+# Or directly on the host:
+ssh magic sudo qm list | grep rocky9-template
 
-# Build all templates
-./manage-platform.sh proxmox_template build --all-distros
+# Build all templates on specific host (auto-discovers from vars/)
+./manage-platform.sh -h magic proxmox_template build --all-distros
 
 # Run specific tasks
-./platform-exec.sh -K proxmox_template cleanup -e template_distribution=rocky9
+./platform-exec.sh -h magic -K proxmox_template cleanup -e template_distribution=rocky9
 ```
 
 ### Dynamic Playbooks

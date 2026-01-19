@@ -47,19 +47,39 @@ STATE_MAP["destroy"]="absent"
 STATE_MAP["create"]="present"
 STATE_MAP["remove"]="absent"
 
-# Distribution list for --all-distros
-ALL_DISTROS=(
-    "rocky9"
-    "rocky10"
-    "debian12"
-)
+# Function to discover available templates from vars directory
+discover_templates() {
+    local vars_dir="${ANSIBLE_DIR}/roles/proxmox_template/vars"
+    local templates=()
+
+    if [[ -d "$vars_dir" ]]; then
+        for file in "$vars_dir"/*.yml; do
+            if [[ -f "$file" ]]; then
+                local basename=$(basename "$file" .yml)
+                templates+=("$basename")
+            fi
+        done
+    fi
+
+    # Return sorted array
+    IFS=$'\n' templates=($(sort <<<"${templates[*]}"))
+    unset IFS
+
+    echo "${templates[@]}"
+}
+
+# Distribution list for --all-distros (dynamically discovered)
+ALL_DISTROS=($(discover_templates))
 
 # Display usage information
 usage() {
+    local templates=($(discover_templates))
+
     echo "Usage: $(basename $0) [-h HOST] <platform> <action> [options]"
     echo ""
     echo "Options:"
-    echo "  -h HOST          - Target specific host from inventory (default: uses all hosts in platform group)"
+    echo "  -h HOST          - Target specific host from inventory (REQUIRED for proxmox operations)"
+    echo "  -t TEMPLATE      - Template name (for proxmox_template platform)"
     echo ""
     echo "Platforms:"
     for platform in "${SUPPORTED_PLATFORMS[@]}"; do
@@ -71,15 +91,23 @@ usage() {
         echo "  - $action"
     done
     echo ""
+
+    if [[ ${#templates[@]} -gt 0 ]]; then
+        echo "Available Templates:"
+        for template in "${templates[@]}"; do
+            echo "  - $template"
+        done
+        echo ""
+    fi
+
     echo "Additional Options:"
-    echo "  --all-distros    - Process all distributions (rocky9, rocky10, debian12)"
-    echo "  -e VAR=VALUE     - Set extra variables (e.g., -e template_distribution=rocky9)"
+    echo "  --all-distros    - Process all available templates"
+    echo "  -e VAR=VALUE     - Set extra variables"
     echo ""
     echo "Examples:"
-    echo "  $(basename $0) proxmox_template build -e template_distribution=rocky9"
-    echo "  $(basename $0) -h magic proxmox_template build -e template_distribution=rocky9"
-    echo "  $(basename $0) proxmox_template build --all-distros"
-    echo "  $(basename $0) proxmox_template destroy -e template_distribution=rocky9"
+    echo "  $(basename $0) -h magic -t rocky9 proxmox_template build"
+    echo "  $(basename $0) -h magic proxmox_template build --all-distros"
+    echo "  $(basename $0) -h proxmox2 -t debian12 proxmox_template destroy"
     exit 1
 }
 
@@ -110,9 +138,18 @@ generate_playbook() {
     local platform="$1"
     local action="$2"
     local state="${STATE_MAP[$action]}"
-    local host_param=""
 
-    # Add host specification if provided
+    # Host must be specified for proxmox operations
+    if [[ "$platform" == "proxmox_template" || "$platform" == "proxmox_vm" ]]; then
+        if [[ -z "$HOST" ]]; then
+            echo "Error: -h HOST is required for ${platform} operations"
+            echo ""
+            usage
+        fi
+    fi
+
+    # Determine host parameter
+    local host_param
     if [[ -n "$HOST" ]]; then
         host_param="hosts: $HOST"
     else
@@ -198,10 +235,14 @@ execute_playbook() {
 }
 
 # Parse command line arguments
-while getopts "h:" opt; do
+TEMPLATE=""
+while getopts "h:t:" opt; do
     case ${opt} in
         h)
             HOST=$OPTARG
+            ;;
+        t)
+            TEMPLATE=$OPTARG
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
@@ -256,6 +297,41 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# For proxmox_template platform, require either -t flag or --all-distros
+if [[ "$PLATFORM" == "proxmox_template" ]]; then
+    if [[ -z "$TEMPLATE" && "$ALL_DISTROS_MODE" == "false" ]]; then
+        echo "Error: proxmox_template requires either -t <template> or --all-distros"
+        echo ""
+        usage
+    fi
+
+    # Validate template exists if specified
+    if [[ -n "$TEMPLATE" ]]; then
+        templates=($(discover_templates))
+        template_found=false
+
+        for tmpl in "${templates[@]}"; do
+            if [[ "$tmpl" == "$TEMPLATE" ]]; then
+                template_found=true
+                break
+            fi
+        done
+
+        if [[ "$template_found" == "false" ]]; then
+            echo "Error: Template '$TEMPLATE' not found"
+            echo ""
+            echo "Available templates:"
+            for tmpl in "${templates[@]}"; do
+                echo "  - $tmpl"
+            done
+            exit 1
+        fi
+
+        # Add template_distribution to extra args
+        EXTRA_ARGS+=("-e" "template_distribution=$TEMPLATE")
+    fi
+fi
 
 # Generate timestamp for files
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"

@@ -1,0 +1,14 @@
+---
+# Host-specific variables for magic
+# These override group vars from proxmox_hosts in inventory.yml
+#
+# This file is optional - only needed if you want to override defaults
+
+# Proxmox configuration (uncomment to override)
+# proxmox_storage: local-lvm
+# proxmox_bridge: vmbr0
+
+# Template settings (uncomment to override)
+# template_memory: 4096
+# template_cores: 4
+# template_disk_size: 8G
