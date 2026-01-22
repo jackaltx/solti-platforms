@@ -1,0 +1,20 @@
+---
+#
+# proxmox_template role - Manage Proxmox VM  lifecycle
+# States:
+#   create: clone (can be linked or not)
+#   start:  startup
+#   stop:  non-graceful
+#   shutdown: graceful
+#   remove: remove image (optional all stores?)
+#   modify: any number of featues: network, resize disk, add disk, add network?, ...
+#   verify: specify test(s)
+#   status: up/down/non-existant  and maybe more details that can be used.
+#
+
+#
+#  Claude: This role captures the workflow to create a VM
+#  I can see clone,  resize , change network, regen cloud-init,
+#  I can see needing to fix after first run, within limits.  (for example you an add/resize a disk, but os has to do it.)
+#  I can see it being cluster aware, though I think that some will be shared functionality with proxmox_template.
+#

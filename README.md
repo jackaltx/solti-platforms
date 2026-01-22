@@ -1,305 +1,125 @@
-# Ansible Collection - jackaltx.solti_platforms
+# Solti Platforms Collection
 
-**Platform creation and provisioning for the SOLTI ecosystem**
+This collection provides Ansible roles for managing various service platforms.
 
-This is an expriment to see if I can find a comment pattern in the
-Virtual Machine api's that I currently use,  Proxmox and Linode.
-Phased developments are a good tool for identifying how a technology
-can be harnessed for use over time.
+## Scripts
 
-I gave Claude a broader goal of K3s, but that is in the future.
-I blew through my free Linode time. Learned quite a bit, and will
-focuse on making Proxmox better for me.  
+### `manage-platform.sh`
 
-Why Proxmox? Simple, community popular and it works is the only good answer.
-It was a toss up between Proxmox and Xen XCP.
+This script is used to manage platforms using dynamically generated Ansible playbooks.
 
-I gave Claude his full head on this ansible role. It uses Ansible tasks like entry
-points into a FORTRAN program.  Invoking the entry points allow acces to the complete set of
-configuration variables. Almost like a "class variable" that the "methods" have access to.
-What this means is that have the least insight into how this works than the rest of my work.
-
-  Jackal
-
-## Overview
-
-This collection manages platform creation (VMs, K3s clusters) for the SOLTI testing and development environment. It provides:
-
-- **Proxmox VM template building** - Rocky 9+, Debian 12+
-- **Proxmox VM lifecycle** - Clone, configure, start/stop, destroy (planned)
-- **Linode instance management** - Create, provision, destroy (planned)
-- **K3s cluster deployment** - Control plane + worker nodes (planned)
-- **Platform base provisioning** - User setup, SSH, packages (planned)
-
-## Quick Start
-
-### Configure Inventory
-
-**IMPORTANT**: Templates are built ON the Proxmox server, not localhost.
-
-These use a user account on the server with sudo privileges, not the proxmox api.
-
-1. Edit `inventory/inventory.yml`
-2. Add your Proxmox hosts to the `proxmox_hosts` group
-3. (Optional) Create `inventory/host_vars/{hostname}.yml` for host-specific overrides
-
-### Build Proxmox Templates
-
-Templates are auto-discovered from [roles/proxmox_template/vars/](roles/proxmox_template/vars/). Just add a new `.yml` file to support a new distribution.
+**Usage:**
 
 ```bash
-# Build single template (runs on Proxmox host) - REQUIRES -h HOST
-./manage-platform.sh -h magic -t rocky9 proxmox_template build
-
-# Build all templates on specific host (auto-discovers all templates in vars/)
-./manage-platform.sh -h magic proxmox_template build --all-distros
-
-# Destroy template on specific host
-./manage-platform.sh -h magic -t rocky9 proxmox_template destroy
-
-# Check for image updates
-./platform-exec.sh -h magic proxmox_template check_for_update -e template_distribution=rocky9
-
-# Verify template
-./platform-exec.sh -h magic proxmox_template verify -e template_distribution=rocky9
-
-# Force rebuild with same image version
-./manage-platform.sh -h magic -t rocky9 proxmox_template build -e template_force_download=true
-
-# Forgot which templates are available?
-./manage-platform.sh
+./manage-platform.sh [-h HOST] <platform> <action> [options]
 ```
 
-### Supported Distributions
+**Description:**
 
-Templates are defined in [roles/proxmox_template/vars/](roles/proxmox_template/vars/):
+The `manage-platform.sh` script is a wrapper that simplifies the execution of Ansible roles for building, destroying, creating, and removing various service platforms. It dynamically generates a temporary Ansible playbook based on the specified platform and action, and then executes it.
 
-- [rocky9.yml](roles/proxmox_template/vars/rocky9.yml) - **Rocky Linux 9.x**
-- [rocky10.yml](roles/proxmox_template/vars/rocky10.yml) - **Rocky Linux 10.x**
-- [debian12.yml](roles/proxmox_template/vars/debian12.yml) - **Debian 12 (Bookworm)**
-- [debian13.yml](roles/proxmox_template/vars/debian13.yml) - **Debian 13 (Trixie)**
+**Key Features:**
 
-**VMID Assignment**: All templates use unified range 9000-9999 (auto-assigned sequentially)
+*   **Dynamic Playbook Generation:** Automatically creates an Ansible playbook in the `tmp/` directory tailored to the specified platform and action.
+*   **Host Targeting:** Allows targeting a specific host from the inventory using the `-h` flag, which is mandatory for Proxmox operations.
+*   **Platform and Action Validation:** Checks if the specified platform and action are supported before execution. The supported platforms and actions are defined within the script.
+*   **Template Discovery:** For the `proxmox_template` platform, it can discover available templates from the `roles/proxmox_template/vars` directory.
+*   **"All Distros" Mode:** The `--all-distros` flag allows processing all discovered distributions for the `proxmox_template` platform in a single run.
+*   **Extra Variables:** Supports passing extra variables to the Ansible playbook using the `-e` flag.
+*   **Interactive Confirmation:** Prompts for confirmation before executing the generated playbook, displaying the playbook's content for review.
+*   **Cleanup:** Automatically removes the temporary playbook upon successful execution.
 
-## Roles
+**Supported Platforms:**
 
-### proxmox_template ✅ READY
+*   `proxmox_template`
+*   `proxmox_vm`
+*   `platform_base`
+*   `linode_instance`
+*   `k3s_control`
+*   `k3s_worker`
 
-Builds Proxmox VM templates from cloud images.
+**Available Templates (for proxmox_template):**
 
-**Features**:
+| Distribution | Status |
+|--------------|--------|
+| debian12     | Ready  |
+| debian13     | Ready  |
+| rocky10      | Ready  |
+| rocky9       | Ready  |
 
-- Downloads cloud images (with caching)
-- Configures VM hardware (CPU, memory, disk)
-- Sets up cloud-init (SSH keys, network)
-- Converts to reusable template
-- Supports Rocky 9+, Debian 12+
+**Supported Actions:**
 
-**Variables**:
+*   `build`
+*   `destroy`
+*   `create`
+*   `remove`
 
-Common variables (set in inventory or command line):
+**Examples:**
 
-```yaml
-proxmox_storage: local-lvm        # Proxmox storage backend
-proxmox_bridge: vmbr0             # Network bridge
-template_memory: 4096             # RAM in MB
-template_cores: 4                 # CPU cores
-template_disk_size: 8G            # Disk size
-```
+*   Build a `rocky9` Proxmox template on the `magic` host:
+    ```bash
+    ./manage-platform.sh -h magic -t rocky9 proxmox_template build
+    ```
 
-Distribution-specific variables (in [roles/proxmox_template/vars/](roles/proxmox_template/vars/)):
+*   Build all Proxmox templates on the `magic` host:
+    ```bash
+    ./manage-platform.sh -h magic proxmox_template build --all-distros
+    ```
 
-- [rocky9.yml](roles/proxmox_template/vars/rocky9.yml) - Rocky Linux 9.x configuration
-- [rocky10.yml](roles/proxmox_template/vars/rocky10.yml) - Rocky Linux 10.x configuration
-- [debian12.yml](roles/proxmox_template/vars/debian12.yml) - Debian 12 configuration
-- [debian13.yml](roles/proxmox_template/vars/debian13.yml) - Debian 13 configuration
+*   Destroy a `debian12` Proxmox template on the `proxmox2` host:
+    ```bash
+    ./manage-platform.sh -h proxmox2 -t debian12 proxmox_template destroy
+    ```
 
-**Usage**:
+### `platform-exec.sh`
 
-The two scripts [manage-platform.sh](manage-platform.sh) and [platform-exec.sh](platform-exec.sh) create dynamic ansible playbooks.
-It keeps the playbook creep to a minimum. At the core, all of this is ansible and can
-be used in your playbooks.
+This script is used to execute specific tasks for platforms using dynamically generated Ansible playbooks.
+
+**Usage:**
 
 ```bash
-# State-based management (uses manage-platform.sh) - REQUIRES -h HOST
-./manage-platform.sh -h magic -t rocky9 proxmox_template build
-./manage-platform.sh -h proxmox2 -t debian12 proxmox_template destroy
-
-# Task execution (uses platform-exec.sh) - REQUIRES -h HOST
-./platform-exec.sh -h magic proxmox_template verify -e template_distribution=rocky9
-./platform-exec.sh -h magic -K proxmox_template cleanup -e template_distribution=debian12
+./platform-exec.sh [-h HOST] [-K] <platform> [entry] [options]
 ```
 
-See [roles/proxmox_template/README.md](roles/proxmox_template/README.md) for details.
+**Description:**
 
-### platform_base (Planned)
+The `platform-exec.sh` script allows for focused execution of individual tasks or "entry points" within a platform's Ansible role. It dynamically generates a temporary Ansible playbook that includes a specific task from a role, providing fine-grained control over operations.
 
-Common provisioning tasks for all platforms.
+**Key Features:**
 
-## Collection Structure
+*   **Task-Specific Execution:** Targets and executes a single task file (entry point) from an Ansible role.
+*   **Dynamic Playbook Generation:** Creates a temporary Ansible playbook to run the specified task.
+*   **Host Targeting:** Allows targeting a specific host with the `-h` flag (required for Proxmox operations).
+*   **Sudo Prompt:** The `-K` flag prompts for a sudo password when the task requires elevated privileges.
+*   **Default Entry Point:** If no entry is specified, it defaults to the `verify` task for the given platform.
+*   **Supported Platforms:** Supports the same platforms as `manage-platform.sh`.
+*   **Extra Variables:** Supports passing extra variables to the Ansible playbook using the `-e` flag.
 
-```
-jackaltx/solti_platforms/
-├── roles/
-│   ├── proxmox_template/     # Template builder (READY)
-│   ├── proxmox_vm/           # VM lifecycle (planned)
-│   ├── linode_instance/      # Linode management (planned)
-│   └── platform_base/        # Common provisioning (planned)
-├── manage-platform.sh        # State-based management script
-├── platform-exec.sh          # Task execution script
-├── inventory/platforms.yml   # Platform inventory
-├── tmp/                      # Generated playbooks (auto-cleaned)
-└── docs/                     # Documentation
-```
+**Common Entry Points (examples for `proxmox_template`):**
 
-## Architecture
+*   `verify` (default) - Verify platform state
+*   `download_image` - Download cloud image
+*   `resize_image` - Resize disk image
+*   `cleanup` - Clean up temporary files
+*   `create_vm` - Create VM
+*   `import_disk` - Import disk
+*   `configure_storage` - Configure storage
+*   `setup_cloudinit` - Setup cloud-init
+*   `convert_template` - Convert to template
 
-Part of the SOLTI ecosystem:
+**Examples:**
 
-```
-Layer 0: solti-conductor      (Orchestration)
-Layer 1: solti-platforms      (This collection - Platform creation)
-Layer 2: solti-monitoring     (Application services)
-         solti-containers
-         solti-ensemble
-```
+*   Verify a `rocky9` Proxmox template on the `magic` host:
+    ```bash
+    ./platform-exec.sh -h magic proxmox_template verify -e template_distribution=rocky9
+    ```
 
-**solti-platforms** creates the compute platforms (VMs, K3s clusters) where other collections deploy their applications.
+*   Clean up temporary files for a `debian12` Proxmox template on the `magic` host, prompting for sudo password:
+    ```bash
+    ./platform-exec.sh -h magic -K proxmox_template cleanup -e template_distribution=debian12
+    ```
 
-## Requirements
-
-- Ansible >= 2.15
-- Proxmox VE 8.x
-- `qemu-img` utility
-- sudo access for `qm` commands
-
-## Installation
-
-```bash
-# From source
-ansible-galaxy collection build
-ansible-galaxy collection install jackaltx-solti_platforms-1.0.0.tar.gz
-
-# Or use locally
-cd /path/to/collections
-git clone <repo-url> ansible_collections/jackaltx/solti_platforms
-```
-
-## Configuration
-
-### Inventory Structure
-
-The inventory uses a simplified host-centric pattern:
-
-```yaml
-# inventory/inventory.yml
-proxmox_hosts:
-  hosts:
-    magic:            # First Proxmox server
-    proxmox2:         # Second Proxmox server (optional)
-  vars:
-    # Common defaults for ALL hosts
-    proxmox_storage: local-lvm
-    proxmox_bridge: vmbr0
-    template_vmid_base: 9000    # Unified range for all templates
-    template_vmid_max: 9999
-```
-
-### Host-Specific Overrides
-
-Create `inventory/host_vars/{hostname}.yml` for per-host customization:
-
-```yaml
-# inventory/host_vars/proxmox2.yml
-proxmox_storage: local-ssd      # Different storage
-proxmox_bridge: vmbr1           # Different bridge
-template_memory: 8192           # More RAM
-```
-
-### Distribution Settings
-
-Distribution-specific settings (image URLs, names) are in [roles/proxmox_template/vars/](roles/proxmox_template/vars/)
-
-## Develoment Roadmap
-
-### Phase 1: Proxmox Templates ✅ COMPLETE
-
-- [x] Template builder role
-- [x] Rocky 9.x support
-- [x] Rocky 10.x support
-- [x] Debian 12 support
-- [x] cloud-init configuration
-- [x] Verification tasks
-
-### Phase 2: Proxmox VMs (Starting Jan 2026)
-
-- [ ] Clone from template
-- [ ] VM configuration
-- [ ] Start/stop/destroy
-- [ ] Integration with platform_base
-
-### Phase 3: Base Provisioning
-
-This would be bringing an OS up to some "standard", could STIG, HIPPA,....
-
-- [ ] User management
-- [ ] SSH key setup
-- [ ] Hostname configuration
-- [ ] Base package installation
-
-### Phase 4: Linode Integration
-
-- [ ] Instance creation
-- [ ] Provisioning
-- [ ] Destroy
-
-### Phase 5: K3s Deployment
-
-- [ ] Control plane role
-- [ ] Worker node role
-- [ ] Cluster bootstrap
-
-## Testing
-
-### Manual Testing
-
-```bash
-# Build Rocky 9 template on specific host
-./manage-platform.sh -h magic -t rocky9 proxmox_template build
-
-# Verify template exists
-./platform-exec.sh -h magic proxmox_template verify -e template_distribution=rocky9
-# Or directly on the host:
-ssh magic sudo qm list | grep rocky9-template
-
-# Build all templates on specific host (auto-discovers from vars/)
-./manage-platform.sh -h magic proxmox_template build --all-distros
-
-# Run specific tasks
-./platform-exec.sh -h magic -K proxmox_template cleanup -e template_distribution=rocky9
-```
-
-### Dynamic Playbooks
-
-Both scripts generate playbooks on-the-fly in `tmp/`:
-
-- **Success**: Playbook auto-deleted
-- **Failure**: Playbook preserved for debugging
-
-### Future: Molecule Testing
-
-After role stabilization, Molecule tests will be added.
-
-## License
-
-MIT
-
-## Author
-
-SOLTI Project - jackaltx
-
-## Related Collections
-
-- [solti-monitoring](https://github.com/jackaltx/solti-monitoring) - Monitoring stack
-- [solti-containers](https://github.com/jackaltx/solti-containers) - Testing containers
-- [solti-ensemble](https://github.com/jackaltx/solti-ensemble) - Shared services
+*   Execute the default `verify` entry point for `proxmox_template` on `proxmox2` host (no sudo by default):
+    ```bash
+    ./platform-exec.sh -h proxmox2 proxmox_template
+    ```

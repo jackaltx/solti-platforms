@@ -6,6 +6,17 @@
 #   absent: Remove template (optionally remove downloaded images)
 #
 
+#
+#  Claude: This role captures the workflow to create an ansible template.
+#  this needs to be in the main documenation. we create templates and clone them,
+#  that is project workflow focus.  platform_vm is for clone and altering.
+#  This is intented for smaller labs,
+#
+#  Also, the project works with cloud-init images. very niche'
+#
+#  Reference: https://docs.ansible.com/projects/ansible/12/collections/community/proxmox/index.html
+#
+
 - name: Validate state parameter
   ansible.builtin.fail:
     msg: "template_state must be one of: present, absent. Current value: {{ template_state }}"

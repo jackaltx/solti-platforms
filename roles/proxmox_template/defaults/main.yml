@@ -35,9 +35,9 @@ template_network_mtu: 1
 
 # cloud-init configuration
 template_ci_user: "{{ ansible_user }}"
-template_ci_passwd: "changeme" # SMELL this is a stand in until I can do  better
-template_ci_sshkeys: "{{ lookup('file', ansible_ssh_private_key_file + '.pub') }}"
-template_ci_ipconfig: "ip=dhcp"
+template_ci_passwd: "changeme" #  CLAUDE:  thie nees to come from an env var "SSH_CI_KEY" or accept be this
+template_ci_sshkeys: "{{ lookup('file', ansible_ssh_private_key_file + '.pub') }}" # CLAUDE this needs to come from a env var "SSH_CI_KEY"
+template_ci_ipconfig: "ip=dhcp" # CLAUDE SMELL  this is good for this sprint.
 
 # Agent
 template_qemu_agent: 1
