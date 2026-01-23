@@ -74,6 +74,15 @@ PLATFORM_ACTIONS["linode_instance"]="create remove"
 PLATFORM_ACTIONS["k3s_control"]="create remove"
 PLATFORM_ACTIONS["k3s_worker"]="create remove"
 
+# Platform-specific state variable names (what the role expects)
+declare -A STATE_VAR_NAME
+STATE_VAR_NAME["proxmox_template"]="template_state"
+STATE_VAR_NAME["proxmox_vm"]="vm_state"
+STATE_VAR_NAME["platform_base"]="base_state"
+STATE_VAR_NAME["linode_instance"]="instance_state"
+STATE_VAR_NAME["k3s_control"]="control_state"
+STATE_VAR_NAME["k3s_worker"]="worker_state"
+
 # Function to discover available templates from vars directory
 discover_templates() {
     local vars_dir="${ANSIBLE_DIR}/roles/proxmox_template/vars"
@@ -197,16 +206,23 @@ generate_playbook() {
         host_param="hosts: ${platform}_platform"
     fi
 
+    # Get the state variable name that the role expects
+    local state_var="${STATE_VAR_NAME[$platform]}"
+    if [[ -z "$state_var" ]]; then
+        echo "Error: No state variable name defined for platform '$platform'"
+        exit 1
+    fi
+
     # Create playbook directly with the proper substitutions
     cat > "$TEMP_PLAYBOOK" << EOF
 ---
 # Dynamically generated playbook
-# Works for: build, destroy, create, remove
+# Platform: ${platform}, Action: ${action}
 - name: Manage ${platform} Platform
   $host_param
   become: true
   vars:
-    ${platform}_state: ${state}
+    ${state_var}: ${state}
   roles:
     - role: ${platform}
 EOF
