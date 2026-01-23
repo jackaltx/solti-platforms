@@ -8,3 +8,7 @@ template_image_file: "debian-12-genericcloud-amd64.qcow2"
 template_checksum_url: "https://cloud.debian.org/images/cloud/bookworm/latest/SHA512SUMS"
 template_checksum_algorithm: sha512
 template_tags: "debian-template,debian-12,cloudinit"
+
+# Guest agent configuration
+template_guest_agent_package: "qemu-guest-agent"
+template_guest_agent_service: "qemu-guest-agent"

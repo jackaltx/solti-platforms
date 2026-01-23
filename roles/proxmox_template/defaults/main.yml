@@ -41,6 +41,7 @@ template_ci_ipconfig: "ip=dhcp" # CLAUDE SMELL  this is good for this sprint.
 
 # Agent
 template_qemu_agent: 1
+template_install_guest_agent: true  # Install qemu-guest-agent in template (required for IP discovery, monitoring)
 
 # Working directory for downloads (persistent storage)
 template_work_dir: "/opt/solti/qcow"

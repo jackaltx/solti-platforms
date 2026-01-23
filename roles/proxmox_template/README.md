@@ -6,9 +6,11 @@ Builds Proxmox VM templates from cloud images for Rocky Linux and Debian.
 
 Creates reusable VM templates on Proxmox VE by:
 1. Downloading cloud images
-2. Configuring VM hardware
-3. Setting up cloud-init
-4. Converting to template
+2. Resizing disk to desired size
+3. Installing qemu-guest-agent (for IP discovery and monitoring)
+4. Creating VM with specified hardware
+5. Setting up cloud-init
+6. Converting to template
 
 Based on existing shell scripts:
 - `build_templates_original/build-rocky9-cloud-init.sh`
@@ -26,6 +28,7 @@ Based on existing shell scripts:
 
 - Proxmox VE 8.x
 - `qemu-img` utility
+- `libguestfs-tools` (for qemu-guest-agent installation via virt-customize)
 - sudo access for `qm` commands
 - Internet access to download images
 
@@ -71,13 +74,14 @@ template_network_model: virtio  # Network model
 template_network_mtu: 1         # MTU
 ```
 
-### cloud-init
+### cloud-init and Guest Agent
 
 ```yaml
 template_ci_user: "{{ ansible_user_id }}"                    # Default user
 template_ci_sshkeys: "{{ ansible_user_dir }}/.ssh/authorized_keys"  # SSH keys
 template_ci_ipconfig: "ip=dhcp"                              # Network config
-template_qemu_agent: 1                                       # QEMU agent
+template_qemu_agent: 1                                       # QEMU agent enabled
+template_install_guest_agent: true                           # Install qemu-guest-agent in template (default: true)
 ```
 
 ### Other

@@ -8,3 +8,7 @@ template_image_file: "Rocky-9-GenericCloud.latest.x86_64.qcow2"
 template_checksum_url: "https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud.latest.x86_64.qcow2.CHECKSUM"
 template_checksum_algorithm: sha256
 template_tags: "rocky-template,rocky9,cloudinit"
+
+# Guest agent configuration
+template_guest_agent_package: "qemu-guest-agent"
+template_guest_agent_service: "qemu-guest-agent"
