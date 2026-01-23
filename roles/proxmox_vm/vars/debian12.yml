@@ -1,7 +1,0 @@
----
-# Debian 12 template configuration
-# Template must exist at this VMID on the Proxmox host
-
-vm_template_vmid: 9000
-vm_template_name: "debian12"
-vm_template_distribution: "debian12"

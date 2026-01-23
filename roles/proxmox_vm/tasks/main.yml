@@ -1,7 +1,13 @@
 ---
 # proxmox_vm role - Manage Proxmox VM lifecycle
 #
-# States (Phase 1 - Debian only):
+# Required variables:
+#   vm_state: create|verify|start|stop|shutdown|remove|modify
+#   vm_vmid: Target VM ID
+#   vm_name: VM name (required for create)
+#   vm_template_vmid: Template VMID to clone from (required for create)
+#
+# States:
 #   create: Clone VM from template, resize disk, configure cloud-init
 #   verify: Check VM exists and display configuration
 #
@@ -13,16 +19,13 @@
 #   modify:   Change VM properties (resize disk, network, etc.)
 #   status:   Get VM status details
 
-- name: Load distribution-specific variables
-  ansible.builtin.include_vars:
-    file: debian12.yml
-
 - name: Validate required variables for create state
   ansible.builtin.assert:
     that:
       - vm_vmid is defined
       - vm_name is defined
-    fail_msg: "Required variables vm_vmid and vm_name must be defined for create state"
+      - vm_template_vmid is defined
+    fail_msg: "Required variables for create state: vm_vmid, vm_name, vm_template_vmid"
   when: vm_state == 'create'
 
 - name: Validate required variables for verify state
