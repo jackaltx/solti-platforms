@@ -1,6 +1,6 @@
 ---
 # Test playbook for proxmox_vm role
-# Creates a Debian 12 VM from template 8001
+# Creates a Debian 12 VM from template 9000
 #
 # Usage:
 #   ansible-playbook -i inventory/inventory.yml \
