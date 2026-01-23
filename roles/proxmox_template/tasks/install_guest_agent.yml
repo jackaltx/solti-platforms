@@ -17,6 +17,7 @@
   ansible.builtin.command:
     cmd: >
       virt-customize -a {{ template_work_dir }}/{{ template_image_file }}
+      --network
       --install {{ template_guest_agent_package }}
       --run-command "systemctl enable {{ template_guest_agent_service }}"
   become: true
@@ -25,6 +26,8 @@
   # This can take 30-60 seconds per distribution
   async: 300
   poll: 5
+  environment:
+    LIBGUESTFS_BACKEND: direct
 
 - name: Display agent installation result
   ansible.builtin.debug:

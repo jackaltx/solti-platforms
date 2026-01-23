@@ -1,0 +1,10 @@
+---
+- name: Build Debian 12 Template with Guest Agent
+  hosts: magic
+  become: true
+  vars:
+    template_distribution: debian12
+    template_state: present
+
+  roles:
+    - proxmox_template
