@@ -1,35 +1,10 @@
 ---
-# Install qemu-guest-agent in the cloud image
-# Uses virt-customize to modify the image before VM creation
+# Configure cloud-init to install qemu-guest-agent on first boot
+# This is more portable than virt-customize and works reliably across all distros
 
-- name: Check if virt-customize is available
-  ansible.builtin.command: which virt-customize
-  register: virt_customize_check
-  changed_when: false
-  failed_when: false
-
-- name: Fail if libguestfs-tools not installed
-  ansible.builtin.fail:
-    msg: "virt-customize not found. Install libguestfs-tools: apt install libguestfs-tools (Debian) or dnf install libguestfs-tools-c (Rocky)"
-  when: virt_customize_check.rc != 0
-
-- name: Install qemu-guest-agent in image ({{ template_distribution }})
-  ansible.builtin.command:
-    cmd: >
-      virt-customize -a {{ template_work_dir }}/{{ template_image_file }}
-      --network
-      --install {{ template_guest_agent_package }}
-      --run-command "systemctl enable {{ template_guest_agent_service }}"
-  become: true
-  register: agent_install_result
-  changed_when: agent_install_result.rc == 0
-  # This can take 30-60 seconds per distribution
-  async: 300
-  poll: 5
-  environment:
-    LIBGUESTFS_BACKEND: direct
-
-- name: Display agent installation result
+- name: Display guest agent installation method
   ansible.builtin.debug:
-    msg: "✓ qemu-guest-agent installed and enabled in {{ template_distribution }} image"
-  when: agent_install_result.rc == 0
+    msg:
+      - "Guest agent will be installed via cloud-init on first VM boot"
+      - "Package: {{ template_guest_agent_package }}"
+      - "This is configured in the VM's cloud-init settings"

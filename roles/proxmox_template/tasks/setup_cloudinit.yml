@@ -52,6 +52,31 @@
   become: true
   register: ipconfig_result
 
+- name: Configure cloud-init to install qemu-guest-agent (if enabled)
+  when: template_install_guest_agent | default(true)
+  block:
+    - name: Create cloud-init user-data file for guest agent installation
+      ansible.builtin.copy:
+        content: |
+          #cloud-config
+          packages:
+            - {{ template_guest_agent_package }}
+          runcmd:
+            - systemctl enable {{ template_guest_agent_service }}
+            - systemctl start {{ template_guest_agent_service }}
+        dest: "/var/lib/vz/snippets/{{ template_vmid }}-cloudinit-agent.yaml"
+        mode: "0644"
+      become: true
+
+    - name: Set custom cloud-init configuration
+      command: >
+        qm set {{ template_vmid }}
+        --cicustom "user=local:snippets/{{ template_vmid }}-cloudinit-agent.yaml"
+      become: true
+      register: cicustom_result
+
 - name: Display cloud-init configuration result
   debug:
-    msg: "cloud-init configured for VM {{ template_vmid }}"
+    msg:
+      - "cloud-init configured for VM {{ template_vmid }}"
+      - "Guest agent: {{ 'will be installed on first boot' if template_install_guest_agent | default(true) else 'not configured' }}"
