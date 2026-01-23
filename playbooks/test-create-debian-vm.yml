@@ -1,0 +1,21 @@
+---
+# Test playbook for proxmox_vm role
+# Creates a Debian 12 VM from template 8001
+#
+# Usage:
+#   ansible-playbook -i inventory/inventory.yml \
+#     --become-password-file ~/.secrets/lavender.pass \
+#     playbooks/test-create-debian-vm.yml
+
+- name: Create Debian 12 VM from template
+  hosts: magic
+  become: true
+
+  vars:
+    vm_name: "test-debian"
+    vm_vmid: 500
+    vm_state: create
+    vm_disk_size: "20G"
+
+  roles:
+    - proxmox_vm

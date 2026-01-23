@@ -1,0 +1,33 @@
+---
+# Verify VM exists and display configuration
+
+- name: Check if VM {{ vm_vmid }} exists
+  ansible.builtin.command:
+    cmd: "qm status {{ vm_vmid }}"
+  register: vm_status
+  changed_when: false
+  failed_when: false
+
+- name: Fail if VM does not exist
+  ansible.builtin.fail:
+    msg: "VM VMID {{ vm_vmid }} does not exist"
+  when: vm_status.rc != 0
+
+- name: Get VM configuration
+  ansible.builtin.command:
+    cmd: "qm config {{ vm_vmid }}"
+  register: vm_config
+  changed_when: false
+  when: vm_status.rc == 0
+
+- name: Display VM status
+  ansible.builtin.debug:
+    msg:
+      - "✓ VM verification successful"
+      - "  VMID: {{ vm_vmid }}"
+      - "  Status: {{ vm_status.stdout }}"
+
+- name: Display VM configuration
+  ansible.builtin.debug:
+    var: vm_config.stdout_lines
+  when: vm_status.rc == 0

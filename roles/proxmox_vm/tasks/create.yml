@@ -1,0 +1,84 @@
+---
+# Create VM from Debian 12 template
+# This task clones a VM from template, resizes disk, and configures cloud-init
+
+- name: Check if template {{ vm_template_vmid }} exists
+  ansible.builtin.command:
+    cmd: "qm status {{ vm_template_vmid }}"
+  register: template_status
+  changed_when: false
+  failed_when: false
+
+- name: Fail if template does not exist
+  ansible.builtin.fail:
+    msg: "Template VMID {{ vm_template_vmid }} not found. Please create template first."
+  when: template_status.rc != 0
+
+- name: Check if target VMID {{ vm_vmid }} already exists
+  ansible.builtin.command:
+    cmd: "qm status {{ vm_vmid }}"
+  register: vmid_check
+  changed_when: false
+  failed_when: false
+
+- name: Fail if VMID already in use
+  ansible.builtin.fail:
+    msg: "VMID {{ vm_vmid }} already exists. Choose a different VMID or remove the existing VM."
+  when: vmid_check.rc == 0
+
+- name: Clone template {{ vm_template_vmid }} to VM {{ vm_vmid }} (linked clone)
+  ansible.builtin.command:
+    cmd: "qm clone {{ vm_template_vmid }} {{ vm_vmid }} --name {{ vm_name }} --full {{ '1' if not vm_linked_clone else '0' }}"
+  register: clone_result
+  changed_when: clone_result.rc == 0
+
+- name: Get VM configuration to find boot disk
+  ansible.builtin.command:
+    cmd: "qm config {{ vm_vmid }}"
+  register: vm_config_raw
+  changed_when: false
+
+- name: Extract boot disk name from configuration
+  ansible.builtin.set_fact:
+    boot_disk: "{{ vm_config_raw.stdout_lines | select('match', '^boot:.*') | first | regex_search('order=([^,;]+)', '\\1') | first }}"
+
+- name: Resize boot disk to {{ vm_disk_size }}
+  ansible.builtin.command:
+    cmd: "qm disk resize {{ vm_vmid }} {{ boot_disk }} {{ vm_disk_size }}"
+  register: resize_result
+  changed_when: resize_result.rc == 0
+
+- name: Expand SSH key file path
+  ansible.builtin.set_fact:
+    ssh_key_path: "{{ vm_ssh_key_file | expanduser }}"
+
+- name: Configure cloud-init user and SSH key
+  ansible.builtin.command:
+    cmd: "qm set {{ vm_vmid }} --ciuser {{ vm_ansible_user }} --sshkeys {{ ssh_key_path }}"
+  register: cloudinit_user
+  changed_when: cloudinit_user.rc == 0
+
+- name: Configure cloud-init network (DHCP)
+  ansible.builtin.command:
+    cmd: "qm set {{ vm_vmid }} --ipconfig0 {{ vm_ip_config }}"
+  register: cloudinit_network
+  changed_when: cloudinit_network.rc == 0
+
+- name: Get final VM configuration
+  ansible.builtin.command:
+    cmd: "qm config {{ vm_vmid }}"
+  register: vm_config_final
+  changed_when: false
+
+- name: Display VM creation summary
+  ansible.builtin.debug:
+    msg:
+      - "✓ VM created successfully"
+      - "  Template: {{ vm_template_name }} (VMID {{ vm_template_vmid }})"
+      - "  New VM: {{ vm_name }} (VMID {{ vm_vmid }})"
+      - "  Disk: {{ boot_disk }} ({{ vm_disk_size }})"
+      - "  Clone type: {{ 'Full' if not vm_linked_clone else 'Linked' }}"
+      - "  Cloud-init user: {{ vm_ansible_user }}"
+      - "  Network: {{ vm_ip_config }}"
+      - ""
+      - "To start the VM: qm start {{ vm_vmid }}"

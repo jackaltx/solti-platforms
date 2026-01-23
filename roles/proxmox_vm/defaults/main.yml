@@ -1,3 +1,25 @@
 #SPDX-License-Identifier: MIT-0
 ---
 # defaults file for proxmox_vm
+
+# VM State Management
+vm_state: create  # create, verify (future: start, stop, shutdown, remove)
+
+# VM Configuration
+vm_disk_size: "20G"  # Boot disk size
+vm_memory: 4096      # RAM in MB
+vm_cores: 4          # CPU cores
+
+# Network Configuration
+vm_ip_config: "ip=dhcp"  # Cloud-init network config
+
+# Cloud-init Configuration
+vm_ansible_user: lavender                        # SSH user for cloud-init
+vm_ssh_key_file: "~/.ssh/id_rsa.pub"            # SSH public key to inject
+
+# Proxmox Configuration (from inventory)
+vm_storage: "{{ proxmox_storage | default('local-lvm') }}"
+vm_bridge: "{{ proxmox_bridge | default('vmbr0') }}"
+
+# Clone Configuration
+vm_linked_clone: true  # Use linked clone (faster, less space)

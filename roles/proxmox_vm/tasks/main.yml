@@ -1,20 +1,48 @@
 ---
+# proxmox_vm role - Manage Proxmox VM lifecycle
 #
-# proxmox_template role - Manage Proxmox VM  lifecycle
-# States:
-#   create: clone (can be linked or not)
-#   start:  startup
-#   stop:  non-graceful
-#   shutdown: graceful
-#   remove: remove image (optional all stores?)
-#   modify: any number of featues: network, resize disk, add disk, add network?, ...
-#   verify: specify test(s)
-#   status: up/down/non-existant  and maybe more details that can be used.
+# States (Phase 1 - Debian only):
+#   create: Clone VM from template, resize disk, configure cloud-init
+#   verify: Check VM exists and display configuration
 #
+# Future states:
+#   start:    Boot VM
+#   stop:     Stop VM (non-graceful)
+#   shutdown: Graceful shutdown
+#   remove:   Destroy VM
+#   modify:   Change VM properties (resize disk, network, etc.)
+#   status:   Get VM status details
 
-#
-#  Claude: This role captures the workflow to create a VM
-#  I can see clone,  resize , change network, regen cloud-init,
-#  I can see needing to fix after first run, within limits.  (for example you an add/resize a disk, but os has to do it.)
-#  I can see it being cluster aware, though I think that some will be shared functionality with proxmox_template.
-#
+- name: Load distribution-specific variables
+  ansible.builtin.include_vars:
+    file: debian12.yml
+
+- name: Validate required variables for create state
+  ansible.builtin.assert:
+    that:
+      - vm_vmid is defined
+      - vm_name is defined
+    fail_msg: "Required variables vm_vmid and vm_name must be defined for create state"
+  when: vm_state == 'create'
+
+- name: Validate required variables for verify state
+  ansible.builtin.assert:
+    that:
+      - vm_vmid is defined
+    fail_msg: "Required variable vm_vmid must be defined for verify state"
+  when: vm_state == 'verify'
+
+- name: Execute create tasks
+  ansible.builtin.include_tasks:
+    file: create.yml
+  when: vm_state == 'create'
+
+- name: Execute verify tasks
+  ansible.builtin.include_tasks:
+    file: verify.yml
+  when: vm_state == 'verify'
+
+- name: Unsupported state
+  ansible.builtin.fail:
+    msg: "Unsupported vm_state: {{ vm_state }}. Supported states: create, verify"
+  when: vm_state not in ['create', 'verify']
