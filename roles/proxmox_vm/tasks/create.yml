@@ -2,6 +2,14 @@
 # Create VM from Debian 12 template
 # This task clones a VM from template, resizes disk, and configures cloud-init
 
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - vm_vmid is defined
+      - vm_name is defined
+      - vm_template_vmid is defined
+    fail_msg: "vm_vmid, vm_name, and vm_template_vmid are required for create action"
+
 - name: Check if template {{ vm_template_vmid }} exists
   ansible.builtin.command:
     cmd: "qm status {{ vm_template_vmid }}"
@@ -47,6 +55,13 @@
     cmd: "qm disk resize {{ vm_vmid }} {{ boot_disk }} {{ vm_disk_size }}"
   register: resize_result
   changed_when: resize_result.rc == 0
+
+- name: Clear inherited cicustom cloud-init configuration
+  ansible.builtin.command:
+    cmd: "qm set {{ vm_vmid }} --delete cicustom"
+  register: clear_cicustom
+  changed_when: clear_cicustom.rc == 0
+  failed_when: false
 
 - name: Expand SSH key file path
   ansible.builtin.set_fact:

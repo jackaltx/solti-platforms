@@ -8,44 +8,22 @@
 #   vm_template_vmid: Template VMID to clone from (required for create)
 #
 # States:
-#   create: Clone VM from template, resize disk, configure cloud-init
-#   verify: Check VM exists and display configuration
-#
-# Future states:
+#   create:   Clone VM from template, resize disk, configure cloud-init
+#   verify:   Check VM exists and display configuration
 #   start:    Boot VM
 #   stop:     Stop VM (non-graceful)
-#   shutdown: Graceful shutdown
+#   shutdown: Graceful shutdown via guest agent
 #   remove:   Destroy VM
+#
+# Future states:
 #   modify:   Change VM properties (resize disk, network, etc.)
 #   status:   Get VM status details
 
-- name: Validate required variables for create state
-  ansible.builtin.assert:
-    that:
-      - vm_vmid is defined
-      - vm_name is defined
-      - vm_template_vmid is defined
-    fail_msg: "Required variables for create state: vm_vmid, vm_name, vm_template_vmid"
-  when: vm_state == 'create'
-
-- name: Validate required variables for verify state
-  ansible.builtin.assert:
-    that:
-      - vm_vmid is defined
-    fail_msg: "Required variable vm_vmid must be defined for verify state"
-  when: vm_state == 'verify'
-
-- name: Execute create tasks
-  ansible.builtin.include_tasks:
-    file: create.yml
-  when: vm_state == 'create'
-
-- name: Execute verify tasks
-  ansible.builtin.include_tasks:
-    file: verify.yml
-  when: vm_state == 'verify'
-
-- name: Unsupported state
+- name: Validate vm_state is supported
   ansible.builtin.fail:
-    msg: "Unsupported vm_state: {{ vm_state }}. Supported states: create, verify"
-  when: vm_state not in ['create', 'verify']
+    msg: "Unsupported vm_state: {{ vm_state }}. Supported states: create, verify, start, stop, shutdown, remove"
+  when: vm_state not in ['create', 'verify', 'start', 'stop', 'shutdown', 'remove']
+
+- name: Execute VM state tasks
+  ansible.builtin.include_tasks:
+    file: "{{ vm_state }}.yml"

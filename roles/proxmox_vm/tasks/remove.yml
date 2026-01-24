@@ -1,0 +1,42 @@
+---
+# Remove VM (destroy)
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - vm_vmid is defined
+    fail_msg: "vm_vmid is required for remove action"
+
+- name: Check if VM {{ vm_vmid }} exists
+  ansible.builtin.command:
+    cmd: "qm status {{ vm_vmid }}"
+  become: true
+  register: vm_exists
+  changed_when: false
+  failed_when: false
+
+- name: Stop VM {{ vm_vmid }} if running
+  ansible.builtin.command:
+    cmd: "qm stop {{ vm_vmid }}"
+  become: true
+  register: stop_before_remove
+  when: vm_exists.rc == 0 and 'running' in vm_exists.stdout
+  changed_when: stop_before_remove.rc == 0
+  failed_when: false
+
+- name: Wait briefly for VM to stop
+  ansible.builtin.pause:
+    seconds: 3
+  when: stop_before_remove is changed
+
+- name: Remove VM {{ vm_vmid }}
+  ansible.builtin.command:
+    cmd: "qm destroy {{ vm_vmid }}"
+  become: true
+  register: remove_result
+  when: vm_exists.rc == 0
+  changed_when: remove_result.rc == 0
+
+- name: Display remove result
+  ansible.builtin.debug:
+    msg: "{{ 'VM ' + (vm_vmid | string) + ' removed successfully' if vm_exists.rc == 0 and remove_result.rc == 0 else 'VM ' + (vm_vmid | string) + ' not found or already removed' }}"

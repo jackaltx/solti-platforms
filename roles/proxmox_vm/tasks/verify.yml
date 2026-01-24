@@ -1,6 +1,12 @@
 ---
 # Verify VM exists and display configuration
 
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - vm_vmid is defined
+    fail_msg: "vm_vmid is required for verify action"
+
 - name: Check if VM {{ vm_vmid }} exists
   ansible.builtin.command:
     cmd: "qm status {{ vm_vmid }}"
