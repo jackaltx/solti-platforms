@@ -23,3 +23,8 @@ vm_bridge: "{{ proxmox_bridge | default('vmbr0') }}"
 
 # Clone Configuration
 vm_linked_clone: true  # Use linked clone (faster, less space)
+
+# Guest Agent Installation
+vm_install_guest_agent: true  # Install qemu-guest-agent after VM creation
+vm_guest_agent_package: qemu-guest-agent  # Package name (distro-specific)
+vm_guest_agent_service: qemu-guest-agent  # Service name

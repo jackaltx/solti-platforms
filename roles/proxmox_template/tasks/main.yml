@@ -58,7 +58,7 @@
       when: template_install_guest_agent | default(true)
 
     # -------------
-    # NOT SURE WHY, but createing the I can't see not this group of tasks separately?
+    # I expect all images are cloud-init.
 
     # in this case I want to create a vm, is cloud-init enabled?  is it to be a template?
     - name: Create VM

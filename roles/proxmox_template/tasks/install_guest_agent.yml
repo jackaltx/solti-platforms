@@ -1,10 +1,14 @@
 ---
-# Configure cloud-init to install qemu-guest-agent on first boot
-# This is more portable than virt-customize and works reliably across all distros
+# Guest agent installation skipped in template
+# Install manually on VMs when needed:
+#   ssh vm "sudo apt install -y qemu-guest-agent"
+#   ssh vm "sudo systemctl enable --now qemu-guest-agent"
 
-- name: Display guest agent installation method
+- name: Display guest agent installation notice
   ansible.builtin.debug:
     msg:
-      - "Guest agent will be installed via cloud-init on first VM boot"
-      - "Package: {{ template_guest_agent_package }}"
-      - "This is configured in the VM's cloud-init settings"
+      - "Guest agent installation skipped in template"
+      - "Install manually on VMs when needed:"
+      - "  Debian/Ubuntu: ssh vm 'sudo apt install -y {{ template_guest_agent_package }}'"
+      - "  Rocky/RHEL: ssh vm 'sudo dnf install -y {{ template_guest_agent_package }}'"
+      - "  Then: ssh vm 'sudo systemctl enable --now {{ template_guest_agent_service }}'"

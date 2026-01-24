@@ -60,30 +60,8 @@
 #   register: resize_result
 #   changed_when: resize_result.rc == 0
 
-# CLAUDE:  this section edist the default cloud init image.. debugging
-
-# - name: Clear inherited cicustom cloud-init configuration
-#   ansible.builtin.command:
-#     cmd: "qm set {{ vm_vmid }} --delete cicustom"
-#   register: clear_cicustom
-#   changed_when: clear_cicustom.rc == 0
-#   failed_when: false
-
-# - name: Expand SSH key file path
-#   ansible.builtin.set_fact:
-#     ssh_key_path: "{{ vm_ssh_key_file | expanduser }}"
-
-# - name: Configure cloud-init user and SSH key
-#   ansible.builtin.command:
-#     cmd: "qm set {{ vm_vmid }} --ciuser {{ vm_ansible_user }} --sshkeys {{ ssh_key_path }}"
-#   register: cloudinit_user
-#   changed_when: cloudinit_user.rc == 0
-
-# - name: Configure cloud-init network (DHCP)
-#   ansible.builtin.command:
-#     cmd: "qm set {{ vm_vmid }} --ipconfig0 {{ vm_ip_config }}"
-#   register: cloudinit_network
-#   changed_when: cloudinit_network.rc == 0
+# CLAUDE: Guest agent pre-installed in template via virt-customize
+# No cicustom needed - agent baked into base image
 
 - name: Get final VM configuration
   ansible.builtin.command:
