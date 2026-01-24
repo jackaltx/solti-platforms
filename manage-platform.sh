@@ -32,54 +32,121 @@ SUPPORTED_PLATFORMS=(
     "k3s_worker"
 )
 
-# Supported actions
-SUPPORTED_ACTIONS=(
-    "build"
-    "destroy"
-    "create"
-    "remove"
-)
-
-# Map actions to state values
+# Platform-specific action to state mapping
+# Format: STATE_MAP["platform:action"]="state"
 declare -A STATE_MAP
-STATE_MAP["build"]="present"
-STATE_MAP["destroy"]="absent"
-STATE_MAP["create"]="present"
-STATE_MAP["remove"]="absent"
 
-# Distribution list for --all-distros
-ALL_DISTROS=(
-    "rocky9"
-    "rocky10"
-    "debian12"
-)
+# proxmox_template: builds/destroys templates
+STATE_MAP["proxmox_template:build"]="present"
+STATE_MAP["proxmox_template:destroy"]="absent"
+
+# proxmox_vm: manages VM lifecycle
+STATE_MAP["proxmox_vm:create"]="create"
+STATE_MAP["proxmox_vm:verify"]="verify"
+STATE_MAP["proxmox_vm:start"]="start"
+STATE_MAP["proxmox_vm:stop"]="stop"
+STATE_MAP["proxmox_vm:shutdown"]="shutdown"
+STATE_MAP["proxmox_vm:remove"]="remove"
+STATE_MAP["proxmox_vm:modify"]="modify"
+
+# platform_base: base platform configuration
+STATE_MAP["platform_base:create"]="present"
+STATE_MAP["platform_base:remove"]="absent"
+
+# linode_instance: Linode cloud instances
+STATE_MAP["linode_instance:create"]="present"
+STATE_MAP["linode_instance:remove"]="absent"
+
+# k3s_control: Kubernetes control plane
+STATE_MAP["k3s_control:create"]="present"
+STATE_MAP["k3s_control:remove"]="absent"
+
+# k3s_worker: Kubernetes worker nodes
+STATE_MAP["k3s_worker:create"]="present"
+STATE_MAP["k3s_worker:remove"]="absent"
+
+# Platform-specific supported actions
+declare -A PLATFORM_ACTIONS
+PLATFORM_ACTIONS["proxmox_template"]="build destroy"
+PLATFORM_ACTIONS["proxmox_vm"]="create verify start stop shutdown remove modify"
+PLATFORM_ACTIONS["platform_base"]="create remove"
+PLATFORM_ACTIONS["linode_instance"]="create remove"
+PLATFORM_ACTIONS["k3s_control"]="create remove"
+PLATFORM_ACTIONS["k3s_worker"]="create remove"
+
+# Platform-specific state variable names (what the role expects)
+declare -A STATE_VAR_NAME
+STATE_VAR_NAME["proxmox_template"]="template_state"
+STATE_VAR_NAME["proxmox_vm"]="vm_state"
+STATE_VAR_NAME["platform_base"]="base_state"
+STATE_VAR_NAME["linode_instance"]="instance_state"
+STATE_VAR_NAME["k3s_control"]="control_state"
+STATE_VAR_NAME["k3s_worker"]="worker_state"
+
+# Function to discover available templates from vars directory
+discover_templates() {
+    local vars_dir="${ANSIBLE_DIR}/roles/proxmox_template/vars"
+    local templates=()
+
+    if [[ -d "$vars_dir" ]]; then
+        for file in "$vars_dir"/*.yml; do
+            if [[ -f "$file" ]]; then
+                local basename=$(basename "$file" .yml)
+                templates+=("$basename")
+            fi
+        done
+    fi
+
+    # Return sorted array
+    IFS=$'\n' templates=($(sort <<<"${templates[*]}"))
+    unset IFS
+
+    echo "${templates[@]}"
+}
+
+# Distribution list for --all-distros (dynamically discovered)
+ALL_DISTROS=($(discover_templates))
 
 # Display usage information
 usage() {
+    local templates=($(discover_templates))
+
     echo "Usage: $(basename $0) [-h HOST] <platform> <action> [options]"
     echo ""
     echo "Options:"
-    echo "  -h HOST          - Target specific host from inventory (default: uses all hosts in platform group)"
+    echo "  -h HOST          - Target specific host from inventory (REQUIRED for proxmox operations)"
+    echo "  -t TEMPLATE      - Template name (for proxmox_template platform)"
     echo ""
-    echo "Platforms:"
+    echo "Platforms and Actions:"
     for platform in "${SUPPORTED_PLATFORMS[@]}"; do
-        echo "  - $platform"
+        echo "  $platform:"
+        echo "    Actions: ${PLATFORM_ACTIONS[$platform]}"
     done
     echo ""
-    echo "Actions:"
-    for action in "${SUPPORTED_ACTIONS[@]}"; do
-        echo "  - $action"
-    done
-    echo ""
+
+    if [[ ${#templates[@]} -gt 0 ]]; then
+        echo "Available Templates:"
+        for template in "${templates[@]}"; do
+            echo "  - $template"
+        done
+        echo ""
+    fi
+
     echo "Additional Options:"
-    echo "  --all-distros    - Process all distributions (rocky9, rocky10, debian12)"
-    echo "  -e VAR=VALUE     - Set extra variables (e.g., -e template_distribution=rocky9)"
+    echo "  --all-distros    - Process all available templates"
+    echo "  -e VAR=VALUE     - Set extra variables"
     echo ""
     echo "Examples:"
-    echo "  $(basename $0) proxmox_template build -e template_distribution=rocky9"
-    echo "  $(basename $0) -h magic proxmox_template build -e template_distribution=rocky9"
-    echo "  $(basename $0) proxmox_template build --all-distros"
-    echo "  $(basename $0) proxmox_template destroy -e template_distribution=rocky9"
+    echo "  # Template management"
+    echo "  $(basename $0) -h magic -t rocky9 proxmox_template build"
+    echo "  $(basename $0) -h magic proxmox_template build --all-distros"
+    echo "  $(basename $0) -h magic -t debian12 proxmox_template destroy"
+    echo ""
+    echo "  # VM management (vm_template_vmid required for create)"
+    echo "  $(basename $0) -h magic proxmox_vm create -e vm_vmid=500 -e vm_name=test-vm -e vm_template_vmid=9000"
+    echo "  $(basename $0) -h magic proxmox_vm verify -e vm_vmid=500"
+    echo "  $(basename $0) -h magic proxmox_vm start -e vm_vmid=500"
+    echo "  $(basename $0) -h magic proxmox_vm remove -e vm_vmid=500"
     exit 1
 }
 
@@ -94,41 +161,68 @@ is_platform_supported() {
     return 1
 }
 
-# Check if an action is supported
-is_action_supported() {
-    local action="$1"
-    for act in "${SUPPORTED_ACTIONS[@]}"; do
-        if [[ "$act" == "$action" ]]; then
-            return 0
-        fi
-    done
-    return 1
+# Check if an action is supported for a specific platform
+is_action_supported_for_platform() {
+    local platform="$1"
+    local action="$2"
+    local valid_actions="${PLATFORM_ACTIONS[$platform]}"
+
+    if [[ -z "$valid_actions" ]]; then
+        return 1
+    fi
+
+    [[ " $valid_actions " =~ " $action " ]]
 }
 
 # Generate playbook from template
 generate_playbook() {
     local platform="$1"
     local action="$2"
-    local state="${STATE_MAP[$action]}"
-    local host_param=""
+    local state="${STATE_MAP["${platform}:${action}"]}"
 
-    # Add host specification if provided
+    # Validate that this platform:action combination is supported
+    if [[ -z "$state" ]]; then
+        echo "Error: Action '$action' is not supported for platform '$platform'"
+        echo ""
+        echo "Supported actions for $platform:"
+        echo "  ${PLATFORM_ACTIONS[$platform]}"
+        exit 1
+    fi
+
+    # Host must be specified for proxmox operations
+    if [[ "$platform" == "proxmox_template" || "$platform" == "proxmox_vm" ]]; then
+        if [[ -z "$HOST" ]]; then
+            echo "Error: -h HOST is required for ${platform} operations"
+            echo ""
+            usage
+        fi
+    fi
+
+    # Determine host parameter
+    local host_param
     if [[ -n "$HOST" ]]; then
         host_param="hosts: $HOST"
     else
         host_param="hosts: ${platform}_platform"
     fi
 
+    # Get the state variable name that the role expects
+    local state_var="${STATE_VAR_NAME[$platform]}"
+    if [[ -z "$state_var" ]]; then
+        echo "Error: No state variable name defined for platform '$platform'"
+        exit 1
+    fi
+
     # Create playbook directly with the proper substitutions
     cat > "$TEMP_PLAYBOOK" << EOF
 ---
 # Dynamically generated playbook
-# Works for: build, destroy, create, remove
+# Platform: ${platform}, Action: ${action}
 - name: Manage ${platform} Platform
   $host_param
   become: true
   vars:
-    ${platform}_state: ${state}
+    ${state_var}: ${state}
   roles:
     - role: ${platform}
 EOF
@@ -198,10 +292,14 @@ execute_playbook() {
 }
 
 # Parse command line arguments
-while getopts "h:" opt; do
+TEMPLATE=""
+while getopts "h:t:" opt; do
     case ${opt} in
         h)
             HOST=$OPTARG
+            ;;
+        t)
+            TEMPLATE=$OPTARG
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2
@@ -234,10 +332,13 @@ if ! is_platform_supported "$PLATFORM"; then
     usage
 fi
 
-# Validate action
-if ! is_action_supported "$ACTION"; then
-    echo "Error: Unsupported action '$ACTION'"
-    usage
+# Validate action is supported for this platform
+if ! is_action_supported_for_platform "$PLATFORM" "$ACTION"; then
+    echo "Error: Action '$ACTION' is not supported for platform '$PLATFORM'"
+    echo ""
+    echo "Supported actions for $PLATFORM:"
+    echo "  ${PLATFORM_ACTIONS[$PLATFORM]}"
+    exit 1
 fi
 
 # Check for --all-distros flag
@@ -256,6 +357,41 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+# For proxmox_template platform, require either -t flag or --all-distros
+if [[ "$PLATFORM" == "proxmox_template" ]]; then
+    if [[ -z "$TEMPLATE" && "$ALL_DISTROS_MODE" == "false" ]]; then
+        echo "Error: proxmox_template requires either -t <template> or --all-distros"
+        echo ""
+        usage
+    fi
+
+    # Validate template exists if specified
+    if [[ -n "$TEMPLATE" ]]; then
+        templates=($(discover_templates))
+        template_found=false
+
+        for tmpl in "${templates[@]}"; do
+            if [[ "$tmpl" == "$TEMPLATE" ]]; then
+                template_found=true
+                break
+            fi
+        done
+
+        if [[ "$template_found" == "false" ]]; then
+            echo "Error: Template '$TEMPLATE' not found"
+            echo ""
+            echo "Available templates:"
+            for tmpl in "${templates[@]}"; do
+                echo "  - $tmpl"
+            done
+            exit 1
+        fi
+
+        # Add template_distribution to extra args
+        EXTRA_ARGS+=("-e" "template_distribution=$TEMPLATE")
+    fi
+fi
 
 # Generate timestamp for files
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"

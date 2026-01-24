@@ -5,6 +5,12 @@ template_state: present
 # Distribution to build (rocky9, rocky10, debian12)
 template_distribution: rocky9
 
+# VMID Configuration - Unified range for ALL templates
+# All templates use 9000-9999 range regardless of distribution
+# VMID is auto-calculated based on existing templates in range
+template_vmid_base: 9000
+template_vmid_max: 9999
+
 # Proxmox configuration
 proxmox_storage: local-lvm
 proxmox_bridge: vmbr0
@@ -29,12 +35,13 @@ template_network_mtu: 1
 
 # cloud-init configuration
 template_ci_user: "{{ ansible_user }}"
-template_ci_passwd: "changeme" # SMELL this is a stand in until I can do  better
-template_ci_sshkeys: "{{ lookup('file', ansible_ssh_private_key_file + '.pub') }}"
-template_ci_ipconfig: "ip=dhcp"
+template_ci_passwd: "changeme" #  CLAUDE:  thie need to come from an env var "SSH_CI_PASS" or accept be this
+template_ci_sshkeys: "{{ lookup('file', ansible_ssh_private_key_file + '.pub') }}" # CLAUDE this needs to come from a env var "SSH_CI_KEY"
+template_ci_ipconfig: "ip=dhcp" # CLAUDE SMELL  this is good for this sprint.
 
 # Agent
 template_qemu_agent: 1
+template_install_guest_agent: false # Guest agent installation skipped - install manually on VMs when needed
 
 # Working directory for downloads (persistent storage)
 template_work_dir: "/opt/solti/qcow"

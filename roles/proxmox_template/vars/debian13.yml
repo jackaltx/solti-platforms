@@ -1,0 +1,14 @@
+---
+# Debian 13 template configuration
+# Note: VMID is auto-assigned from unified range (9000-9999) defined in inventory
+template_name: debian13-template
+template_os_type: l26
+template_image_url: "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
+template_image_file: "debian-13-genericcloud-amd64.qcow2"
+template_checksum_url: "https://cloud.debian.org/images/cloud/trixie/latest/SHA512SUMS"
+template_checksum_algorithm: sha512
+template_tags: "debian-template,debian-13,cloudinit"
+
+# Guest agent configuration
+template_guest_agent_package: "qemu-guest-agent"
+template_guest_agent_service: "qemu-guest-agent"

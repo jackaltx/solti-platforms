@@ -6,6 +6,17 @@
 #   absent: Remove template (optionally remove downloaded images)
 #
 
+#
+#  Claude: This role captures the workflow to create an ansible template.
+#  this needs to be in the main documenation. we create templates and clone them,
+#  that is project workflow focus.  platform_vm is for clone and altering.
+#  This is intented for smaller labs,
+#
+#  Also, the project works with cloud-init images. very niche'
+#
+#  Reference: https://docs.ansible.com/projects/ansible/12/collections/community/proxmox/index.html
+#
+
 - name: Validate state parameter
   ansible.builtin.fail:
     msg: "template_state must be one of: present, absent. Current value: {{ template_state }}"
@@ -41,8 +52,13 @@
     - name: Resize disk image
       ansible.builtin.include_tasks: resize_image.yml
 
+    # Install qemu-guest-agent in the image (before VM creation)
+    - name: Install qemu-guest-agent
+      ansible.builtin.include_tasks: install_guest_agent.yml
+      when: template_install_guest_agent | default(true)
+
     # -------------
-    # NOT SURE WHY, but createing the I can't see not this group of tasks separately?
+    # I expect all images are cloud-init.
 
     # in this case I want to create a vm, is cloud-init enabled?  is it to be a template?
     - name: Create VM

@@ -1,0 +1,32 @@
+---
+# Shutdown VM (graceful shutdown via guest agent)
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - vm_vmid is defined
+    fail_msg: "vm_vmid is required for shutdown action"
+
+- name: Shutdown VM {{ vm_vmid }} (graceful)
+  ansible.builtin.command:
+    cmd: "qm shutdown {{ vm_vmid }}"
+  become: true
+  register: shutdown_result
+  changed_when: shutdown_result.rc == 0
+  failed_when: false
+
+- name: Display shutdown result
+  ansible.builtin.debug:
+    msg: "{{ 'VM ' + (vm_vmid | string) + ' shutdown initiated successfully' if shutdown_result.rc == 0 else 'VM ' + (vm_vmid | string) + ' already stopped or shutdown failed: ' + shutdown_result.stderr }}"
+
+- name: Wait for VM to shutdown (optional)
+  ansible.builtin.command:
+    cmd: "qm status {{ vm_vmid }}"
+  become: true
+  register: status_check
+  until: "'stopped' in status_check.stdout"
+  retries: 30
+  delay: 2
+  changed_when: false
+  failed_when: false
+  when: shutdown_result.rc == 0

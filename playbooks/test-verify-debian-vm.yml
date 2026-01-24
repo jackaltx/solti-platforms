@@ -1,0 +1,18 @@
+---
+# Verify playbook for proxmox_vm role
+#
+# Usage:
+#   ansible-playbook -i inventory/inventory.yml \
+#     --become-password-file ~/.secrets/lavender.pass \
+#     playbooks/test-verify-debian-vm.yml
+
+- name: Verify Debian 12 VM
+  hosts: magic
+  become: true
+
+  vars:
+    vm_vmid: 500
+    vm_state: verify
+
+  roles:
+    - proxmox_vm

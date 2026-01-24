@@ -1,0 +1,20 @@
+---
+# Start VM
+
+- name: Validate required variables
+  ansible.builtin.assert:
+    that:
+      - vm_vmid is defined
+    fail_msg: "vm_vmid is required for start action"
+
+- name: Start VM {{ vm_vmid }}
+  ansible.builtin.command:
+    cmd: "qm start {{ vm_vmid }}"
+  become: true
+  register: start_result
+  changed_when: start_result.rc == 0
+  failed_when: false
+
+- name: Display start result
+  ansible.builtin.debug:
+    msg: "{{ 'VM ' + (vm_vmid | string) + ' started successfully' if start_result.rc == 0 else 'VM ' + (vm_vmid | string) + ' already running or start failed: ' + start_result.stderr }}"

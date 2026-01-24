@@ -1,0 +1,14 @@
+---
+# Guest agent installation skipped in template
+# Install manually on VMs when needed:
+#   ssh vm "sudo apt install -y qemu-guest-agent"
+#   ssh vm "sudo systemctl enable --now qemu-guest-agent"
+
+- name: Display guest agent installation notice
+  ansible.builtin.debug:
+    msg:
+      - "Guest agent installation skipped in template"
+      - "Install manually on VMs when needed:"
+      - "  Debian/Ubuntu: ssh vm 'sudo apt install -y {{ template_guest_agent_package }}'"
+      - "  Rocky/RHEL: ssh vm 'sudo dnf install -y {{ template_guest_agent_package }}'"
+      - "  Then: ssh vm 'sudo systemctl enable --now {{ template_guest_agent_service }}'"

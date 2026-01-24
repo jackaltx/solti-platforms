@@ -1,9 +1,9 @@
 ---
 # Calculate next available VMID based on existing templates
-# Uses smart numbering with base VMID from vars file
-# Rocky 9 = 7000-7999, Rocky 10 = 10000-10999, Debian 12 = 9000-9999
+# Uses UNIFIED VMID RANGE (9000-9999) for ALL distributions
+# No more per-distribution ranges - all templates share the same namespace
 
-- name: Get list of existing VMs
+- name: Get list of all VMs and templates
   ansible.builtin.command: pvesh get /cluster/resources --type vm --output-format json
   become: true
   register: vm_list_raw
@@ -13,41 +13,45 @@
   ansible.builtin.set_fact:
     vm_list: "{{ vm_list_raw.stdout | from_json }}"
 
-- name: Set VMID range based on base VMID from vars
+- name: Find existing template VMIDs in unified range ({{ template_vmid_base }}-{{ template_vmid_max }})
   ansible.builtin.set_fact:
-    vmid_range_start: "{{ template_vmid_base }}"
-    vmid_range_end: "{{ template_vmid_base | int + 999 }}"
-
-- name: Find existing VMIDs in range for this distribution
-  ansible.builtin.set_fact:
-    existing_vmids: >-
+    existing_template_vmids: >-
       {{ vm_list
+         | selectattr('template', 'defined')
+         | selectattr('template', 'equalto', 1)
          | selectattr('vmid', 'defined')
          | map(attribute='vmid')
          | map('int')
-         | select('>=', vmid_range_start | int)
-         | select('<=', vmid_range_end | int)
+         | select('>=', template_vmid_base | int)
+         | select('<=', template_vmid_max | int)
          | list
          | sort }}
 
-- name: Display existing VMIDs
+- name: Display existing template VMIDs
   ansible.builtin.debug:
-    msg: "Existing VMIDs for {{ template_distribution }}: {{ existing_vmids }}"
+    msg: "Existing templates in range {{ template_vmid_base }}-{{ template_vmid_max }}: {{ existing_template_vmids }}"
 
-- name: Calculate next VMID
+- name: Calculate next available VMID
   ansible.builtin.set_fact:
-    calculated_vmid: "{{ (vmid_range_start | int + 1) if (existing_vmids | length == 0) else ((existing_vmids | max) + 1) }}"
+    calculated_vmid: "{{ template_vmid_base if (existing_template_vmids | length == 0) else ((existing_template_vmids | max | int) + 1) }}"
 
-- name: Set template VMID and name
+- name: Check if VMID range is exhausted
+  ansible.builtin.assert:
+    that:
+      - calculated_vmid | int <= template_vmid_max | int
+    fail_msg: "VMID range exhausted! Next VMID {{ calculated_vmid }} exceeds maximum {{ template_vmid_max }}"
+    success_msg: "VMID {{ calculated_vmid }} is available"
+
+- name: Set template VMID (use simple template name from vars)
   ansible.builtin.set_fact:
     template_vmid: "{{ calculated_vmid }}"
-    template_name: "{{ template_distribution }}-template-{{ calculated_vmid }}"
+    # template_name comes from vars file (e.g., rocky9-template, debian12-template)
 
 - name: Display calculated VMID
   ansible.builtin.debug:
     msg:
       - "Distribution: {{ template_distribution }}"
-      - "VMID range: {{ vmid_range_start }}-{{ vmid_range_end }}"
-      - "Existing VMIDs: {{ existing_vmids }}"
+      - "VMID range: {{ template_vmid_base }}-{{ template_vmid_max }}"
+      - "Existing template VMIDs: {{ existing_template_vmids }}"
       - "Next VMID: {{ template_vmid }}"
       - "Template name: {{ template_name }}"

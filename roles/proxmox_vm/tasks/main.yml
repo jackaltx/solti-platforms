@@ -1,0 +1,29 @@
+---
+# proxmox_vm role - Manage Proxmox VM lifecycle
+#
+# Required variables:
+#   vm_state: create|verify|start|stop|shutdown|remove|modify
+#   vm_vmid: Target VM ID
+#   vm_name: VM name (required for create)
+#   vm_template_vmid: Template VMID to clone from (required for create)
+#
+# States:
+#   create:   Clone VM from template, resize disk, configure cloud-init
+#   verify:   Check VM exists and display configuration
+#   start:    Boot VM
+#   stop:     Stop VM (non-graceful)
+#   shutdown: Graceful shutdown via guest agent
+#   remove:   Destroy VM
+#
+# Future states:
+#   modify:   Change VM properties (resize disk, network, etc.)
+#   status:   Get VM status details
+
+- name: Validate vm_state is supported
+  ansible.builtin.fail:
+    msg: "Unsupported vm_state: {{ vm_state }}. Supported states: create, verify, start, stop, shutdown, remove"
+  when: vm_state not in ['create', 'verify', 'start', 'stop', 'shutdown', 'remove']
+
+- name: Execute VM state tasks
+  ansible.builtin.include_tasks:
+    file: "{{ vm_state }}.yml"

@@ -2,8 +2,10 @@
 # Clone latest Debian 12 template and resize disk to 20G
 # Usage: ansible-playbook -K -i inventory/inventory.yml playbooks/clone-debian12-test.yml
 
+# hosts hardcoded for now.
+
 - name: Clone latest Debian 12 template
-  hosts: proxmox_vm_platform
+  hosts: magic
   become: true
 
   vars:
