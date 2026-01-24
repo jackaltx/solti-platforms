@@ -34,6 +34,8 @@
     msg: "VMID {{ vm_vmid }} already exists. Choose a different VMID or remove the existing VM."
   when: vmid_check.rc == 0
 
+# This is where the cloing work is done
+
 - name: Clone template {{ vm_template_vmid }} to VM {{ vm_vmid }} (linked clone)
   ansible.builtin.command:
     cmd: "qm clone {{ vm_template_vmid }} {{ vm_vmid }} --name {{ vm_name }} --full {{ '1' if not vm_linked_clone else '0' }}"
@@ -50,40 +52,51 @@
   ansible.builtin.set_fact:
     boot_disk: "{{ vm_config_raw.stdout_lines | select('match', '^boot:.*') | first | regex_search('order=([^,;]+)', '\\1') | first }}"
 
-- name: Resize boot disk to {{ vm_disk_size }}
-  ansible.builtin.command:
-    cmd: "qm disk resize {{ vm_vmid }} {{ boot_disk }} {{ vm_disk_size }}"
-  register: resize_result
-  changed_when: resize_result.rc == 0
+# CLAUDE:  you cannot shrink, only grow!
 
-- name: Clear inherited cicustom cloud-init configuration
-  ansible.builtin.command:
-    cmd: "qm set {{ vm_vmid }} --delete cicustom"
-  register: clear_cicustom
-  changed_when: clear_cicustom.rc == 0
-  failed_when: false
+# - name: Resize boot disk to {{ vm_disk_size }}
+#   ansible.builtin.command:
+#     cmd: "qm disk resize {{ vm_vmid }} {{ boot_disk }} {{ vm_disk_size }}"
+#   register: resize_result
+#   changed_when: resize_result.rc == 0
 
-- name: Expand SSH key file path
-  ansible.builtin.set_fact:
-    ssh_key_path: "{{ vm_ssh_key_file | expanduser }}"
+# CLAUDE:  this section edist the default cloud init image.. debugging
 
-- name: Configure cloud-init user and SSH key
-  ansible.builtin.command:
-    cmd: "qm set {{ vm_vmid }} --ciuser {{ vm_ansible_user }} --sshkeys {{ ssh_key_path }}"
-  register: cloudinit_user
-  changed_when: cloudinit_user.rc == 0
+# - name: Clear inherited cicustom cloud-init configuration
+#   ansible.builtin.command:
+#     cmd: "qm set {{ vm_vmid }} --delete cicustom"
+#   register: clear_cicustom
+#   changed_when: clear_cicustom.rc == 0
+#   failed_when: false
 
-- name: Configure cloud-init network (DHCP)
-  ansible.builtin.command:
-    cmd: "qm set {{ vm_vmid }} --ipconfig0 {{ vm_ip_config }}"
-  register: cloudinit_network
-  changed_when: cloudinit_network.rc == 0
+# - name: Expand SSH key file path
+#   ansible.builtin.set_fact:
+#     ssh_key_path: "{{ vm_ssh_key_file | expanduser }}"
+
+# - name: Configure cloud-init user and SSH key
+#   ansible.builtin.command:
+#     cmd: "qm set {{ vm_vmid }} --ciuser {{ vm_ansible_user }} --sshkeys {{ ssh_key_path }}"
+#   register: cloudinit_user
+#   changed_when: cloudinit_user.rc == 0
+
+# - name: Configure cloud-init network (DHCP)
+#   ansible.builtin.command:
+#     cmd: "qm set {{ vm_vmid }} --ipconfig0 {{ vm_ip_config }}"
+#   register: cloudinit_network
+#   changed_when: cloudinit_network.rc == 0
 
 - name: Get final VM configuration
   ansible.builtin.command:
     cmd: "qm config {{ vm_vmid }}"
   register: vm_config_final
   changed_when: false
+
+- name: vm_config_final?
+  ansible.builtin.debug:
+    var: vm_config_final
+
+# CLAUDE: this feeds back my input...may not be real
+#  Think: 'as designed' vs 'as built'
 
 - name: Display VM creation summary
   ansible.builtin.debug:
