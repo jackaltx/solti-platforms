@@ -91,27 +91,28 @@ discover_templates() {
     if [[ -d "$vars_dir" ]]; then
         for file in "$vars_dir"/*.yml; do
             if [[ -f "$file" ]]; then
-                local basename=$(basename "$file" .yml)
+                local basename
+                basename=$(basename "$file" .yml)
                 templates+=("$basename")
             fi
         done
     fi
 
     # Return sorted array
-    IFS=$'\n' templates=($(sort <<<"${templates[*]}"))
-    unset IFS
+    mapfile -t templates < <(sort <<<"${templates[*]}")
 
     echo "${templates[@]}"
 }
 
 # Distribution list for --all-distros (dynamically discovered)
-ALL_DISTROS=($(discover_templates))
+mapfile -t ALL_DISTROS < <(discover_templates)
 
 # Display usage information
 usage() {
-    local templates=($(discover_templates))
+    local -a templates
+    mapfile -t templates < <(discover_templates)
 
-    echo "Usage: $(basename $0) [-h HOST] <platform> <action> [options]"
+    echo "Usage: $(basename "$0") [-h HOST] <platform> <action> [options]"
     echo ""
     echo "Options:"
     echo "  -h HOST          - Target specific host from inventory (REQUIRED for proxmox operations)"
@@ -138,15 +139,15 @@ usage() {
     echo ""
     echo "Examples:"
     echo "  # Template management"
-    echo "  $(basename $0) -h magic -t rocky9 proxmox_template build"
-    echo "  $(basename $0) -h magic proxmox_template build --all-distros"
-    echo "  $(basename $0) -h magic -t debian12 proxmox_template destroy"
+    echo "  $(basename "$0") -h magic -t rocky9 proxmox_template build"
+    echo "  $(basename "$0") -h magic proxmox_template build --all-distros"
+    echo "  $(basename "$0") -h magic -t debian12 proxmox_template destroy"
     echo ""
     echo "  # VM management (vm_template_vmid required for create)"
-    echo "  $(basename $0) -h magic proxmox_vm create -e vm_vmid=500 -e vm_name=test-vm -e vm_template_vmid=9000"
-    echo "  $(basename $0) -h magic proxmox_vm verify -e vm_vmid=500"
-    echo "  $(basename $0) -h magic proxmox_vm start -e vm_vmid=500"
-    echo "  $(basename $0) -h magic proxmox_vm remove -e vm_vmid=500"
+    echo "  $(basename "$0") -h magic proxmox_vm create -e vm_vmid=500 -e vm_name=test-vm -e vm_template_vmid=9000"
+    echo "  $(basename "$0") -h magic proxmox_vm verify -e vm_vmid=500"
+    echo "  $(basename "$0") -h magic proxmox_vm start -e vm_vmid=500"
+    echo "  $(basename "$0") -h magic proxmox_vm remove -e vm_vmid=500"
     exit 1
 }
 
@@ -171,7 +172,7 @@ is_action_supported_for_platform() {
         return 1
     fi
 
-    [[ " $valid_actions " =~ " $action " ]]
+    [[ " $valid_actions " == *" $action "* ]]
 }
 
 # Generate playbook from template
@@ -262,7 +263,7 @@ execute_playbook() {
     echo ""
 
     # Ask for confirmation
-    read -p "Execute this playbook? [Y/n]: " confirm
+    read -r -p "Execute this playbook? [Y/n]: " confirm
     if [[ "$confirm" =~ ^[Nn] ]]; then
         echo "Operation cancelled"
         exit 0
@@ -368,7 +369,7 @@ if [[ "$PLATFORM" == "proxmox_template" ]]; then
 
     # Validate template exists if specified
     if [[ -n "$TEMPLATE" ]]; then
-        templates=($(discover_templates))
+        mapfile -t templates < <(discover_templates)
         template_found=false
 
         for tmpl in "${templates[@]}"; do

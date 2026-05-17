@@ -26,7 +26,7 @@ Converts your existing shell scripts into Ansible role:
 - Debian 12 (VMID 9001)
 
 **Role Structure**:
-```
+```text
 roles/proxmox_template/
 ├── defaults/main.yml              # All configurable variables
 ├── vars/
@@ -97,14 +97,14 @@ ansible-playbook playbooks/build-single-template.yml -e template_distribution=ro
 - Keeps collection self-contained
 - Enables proper distribution
 
-### Configuration
+### Collections Path Configuration
 ❌ **Wrong**: `collections_paths` (plural, deprecated)
 ✅ **Correct**: `collections_path` (singular)
 - Ansible 2.19 will remove plural form
 
 ## Files Created
 
-```
+```text
 solti-platforms/
 ├── README.md                       # Collection overview
 ├── CLAUDE.md                       # Claude Code context
@@ -183,7 +183,7 @@ sudo qm list | grep template
 ## Integration with SOLTI Ecosystem
 
 ### Architecture Position
-```
+```text
 Layer 0: solti-conductor      (Orchestration - planned)
 Layer 1: solti-platforms      (THIS - Creates platforms) ✅ Phase 1
 Layer 2: solti-monitoring     (Applications run ON platforms)

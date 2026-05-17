@@ -352,7 +352,7 @@ See [issues/](issues/) directory for tracked issues and future enhancements:
 This collection is part of the larger **Solti Multi-Collection Project** (see parent [../CLAUDE.md](../CLAUDE.md) for overall system context).
 
 **Architecture Position** - Layer 1: Platform Creation:
-```
+```text
 Layer 0: Orchestration (inventory, workflows)
 Layer 1: solti-platforms (THIS - Platform creation)
 Layer 2: Applications (solti-monitoring, solti-containers, solti-ensemble)
