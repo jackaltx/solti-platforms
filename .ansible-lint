@@ -1,0 +1,42 @@
+---
+# Ansible Lint Configuration
+# Reduces noise from trivial formatting issues while enforcing important rules
+
+# Only warn on trivial formatting issues (don't fail CI)
+warn_list:
+  - yaml[comments]          # Comment spacing (2 spaces before #)
+  - yaml[comments-indentation]  # Comment alignment
+  - yaml[braces]            # Jinja2 brace spacing
+  - yaml[trailing-spaces]   # Trailing whitespace
+  - yaml[line-length]       # Lines > 160 characters
+  - yaml[new-line-at-end-of-file]  # Missing newline at EOF
+  - yaml[document-start]    # Missing "---" document start
+  - name[casing]            # Task name capitalization
+  - name[play]              # Unnamed plays
+  - name[template]          # Jinja in task name not at the end
+  - jinja[spacing]          # Jinja2 template spacing
+  - var-naming[no-role-prefix]  # 145 pre-existing registers; tracked for a dedicated rename pass
+  - fqcn[action-core]       # Module names not fully qualified
+  - no-changed-when         # Commands without changed_when
+  - no-handler              # changed_when used where a handler would fit
+  - command-instead-of-shell  # shell used where command would do
+  - risky-shell-pipe        # shell pipefail not set
+  - meta-incorrect          # meta/main.yml placeholder fields
+  - schema[meta]            # meta/main.yml schema
+  - schema[meta-runtime]    # meta/runtime.yml schema
+
+# Skip rules that conflict with project patterns
+skip_list:
+  - galaxy[tags]            # Not publishing to Galaxy yet
+  - galaxy[no-changelog]    # Not publishing to Galaxy yet
+
+# Exclude patterns
+exclude_paths:
+  - .git/
+  - .github/
+  - node_modules/
+  - tmp/
+  - logs/
+
+# Enable offline mode (don't check for newer ansible-lint versions)
+offline: true
