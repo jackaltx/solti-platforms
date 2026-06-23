@@ -18,6 +18,7 @@ ANSIBLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INVENTORY="${ANSIBLE_DIR}/inventory/inventory.yml"
 TEMP_DIR="${ANSIBLE_DIR}/tmp"
 HOST=""
+EXTRA_INVENTORY=""
 
 # Ensure temp directory exists
 mkdir -p "${TEMP_DIR}"
@@ -117,6 +118,7 @@ usage() {
     echo "Options:"
     echo "  -h HOST          - Target specific host from inventory (REQUIRED for proxmox operations)"
     echo "  -t TEMPLATE      - Template name (for proxmox_template platform)"
+    echo "  -i INVENTORY     - Additional inventory file (vars layered on top of default inventory)"
     echo ""
     echo "Platforms and Actions:"
     for platform in "${SUPPORTED_PLATFORMS[@]}"; do
@@ -145,6 +147,7 @@ usage() {
     echo ""
     echo "  # VM management (vm_template_vmid required for create)"
     echo "  $(basename "$0") -h magic proxmox_vm create -e vm_vmid=500 -e vm_name=test-vm -e vm_template_vmid=9000"
+    echo "  $(basename "$0") -h magic -i inventory/matrix-bot1-vm.yml proxmox_vm create"
     echo "  $(basename "$0") -h magic proxmox_vm verify -e vm_vmid=500"
     echo "  $(basename "$0") -h magic proxmox_vm start -e vm_vmid=500"
     echo "  $(basename "$0") -h magic proxmox_vm remove -e vm_vmid=500"
@@ -269,9 +272,23 @@ execute_playbook() {
         exit 0
     fi
 
+    # Build inventory args — always use default, layer extra on top if provided
+    local inventory_args=("-i" "${INVENTORY}")
+    if [[ -n "$EXTRA_INVENTORY" ]]; then
+        inventory_args+=("-i" "${EXTRA_INVENTORY}")
+    fi
+
+    # Build sudo args — use password file if available, otherwise interactive -K
+    local sudo_args=()
+    if [[ -f "${HOME}/.secrets/lavender.pass" ]]; then
+        sudo_args=("--become-password-file" "${HOME}/.secrets/lavender.pass")
+    else
+        sudo_args=("-K")
+    fi
+
     # Always use sudo for all states
-    echo "Executing with sudo privileges: ansible-playbook -K -i ${INVENTORY} ${TEMP_PLAYBOOK} ${extra_args[*]}"
-    ansible-playbook -K -i "${INVENTORY}" "${TEMP_PLAYBOOK}" "${extra_args[@]}"
+    echo "Executing: ansible-playbook ${sudo_args[*]} ${inventory_args[*]} ${TEMP_PLAYBOOK} ${extra_args[*]}"
+    ansible-playbook "${sudo_args[@]}" "${inventory_args[@]}" "${TEMP_PLAYBOOK}" "${extra_args[@]}"
 
     # Check execution status
     EXIT_CODE=$?
@@ -294,13 +311,16 @@ execute_playbook() {
 
 # Parse command line arguments
 TEMPLATE=""
-while getopts "h:t:" opt; do
+while getopts "h:t:i:" opt; do
     case ${opt} in
         h)
             HOST=$OPTARG
             ;;
         t)
             TEMPLATE=$OPTARG
+            ;;
+        i)
+            EXTRA_INVENTORY=$OPTARG
             ;;
         \?)
             echo "Invalid option: -$OPTARG" >&2

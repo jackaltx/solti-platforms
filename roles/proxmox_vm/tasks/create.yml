@@ -63,6 +63,34 @@
 # CLAUDE: Guest agent pre-installed in template via virt-customize
 # No cicustom needed - agent baked into base image
 
+- name: Copy SSH public key to Proxmox host
+  ansible.builtin.copy:
+    src: "{{ vm_ssh_key_file }}"
+    dest: "/tmp/vm-{{ vm_vmid }}-sshkey.pub"
+    mode: "0644"
+
+- name: Configure cloud-init user, SSH key, and password
+  ansible.builtin.command:
+    cmd: >-
+      qm set {{ vm_vmid }}
+      --ciuser {{ vm_ansible_user }}
+      --sshkeys /tmp/vm-{{ vm_vmid }}-sshkey.pub
+      {{ '--cipassword ' + vm_ansible_password if vm_ansible_password else '' }}
+  register: cloudinit_result
+  changed_when: cloudinit_result.rc == 0
+  no_log: true
+
+- name: Set network bridge to {{ vm_bridge }}
+  ansible.builtin.command:
+    cmd: "qm set {{ vm_vmid }} --net0 virtio,bridge={{ vm_bridge }},mtu=1"
+  register: net_result
+  changed_when: net_result.rc == 0
+
+- name: Remove temporary SSH key file
+  ansible.builtin.file:
+    path: "/tmp/vm-{{ vm_vmid }}-sshkey.pub"
+    state: absent
+
 - name: Get final VM configuration
   ansible.builtin.command:
     cmd: "qm config {{ vm_vmid }}"
@@ -80,11 +108,12 @@
   ansible.builtin.debug:
     msg:
       - "✓ VM created successfully"
-      - "  Template: {{ vm_template_name }} (VMID {{ vm_template_vmid }})"
+      - "  Template VMID: {{ vm_template_vmid }}"
       - "  New VM: {{ vm_name }} (VMID {{ vm_vmid }})"
       - "  Disk: {{ boot_disk }} ({{ vm_disk_size }})"
       - "  Clone type: {{ 'Full' if not vm_linked_clone else 'Linked' }}"
-      - "  Cloud-init user: {{ vm_ansible_user }}"
+      - "  Cloud-init user: {{ vm_ansible_user }} (password: {{ 'set' if vm_ansible_password else 'not set' }})"
+      - "  Bridge: {{ vm_bridge }}"
       - "  Network: {{ vm_ip_config }}"
       - ""
       - "To start the VM: qm start {{ vm_vmid }}"

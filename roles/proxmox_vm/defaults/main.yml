@@ -14,8 +14,9 @@ vm_cores: 4          # CPU cores
 vm_ip_config: "ip=dhcp"  # Cloud-init network config
 
 # Cloud-init Configuration
-vm_ansible_user: lavender                        # SSH user for cloud-init
-vm_ssh_key_file: "~/.ssh/id_rsa.pub"            # SSH public key to inject
+vm_ansible_user: lavender                                          # SSH user for cloud-init
+vm_ssh_key_file: "~/.ssh/id_ed25519.pub"                          # SSH public key to inject
+vm_ansible_password: "{{ lookup('env', 'VM_CI_PASS') }}"          # SSH/console password (from env)
 
 # Proxmox Configuration (from inventory)
 vm_storage: "{{ proxmox_storage | default('local-lvm') }}"

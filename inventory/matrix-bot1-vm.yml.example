@@ -1,0 +1,40 @@
+---
+# VM Inventory Template
+# Copy to <hostname>-vm.yml (gitignored) and fill in VM-SPECIFIC section
+#
+# Usage:
+#   ./manage-platform.sh -h magic -i inventory/<hostname>-vm.yml proxmox_vm create
+#   ./manage-platform.sh -h magic -i inventory/<hostname>-vm.yml proxmox_vm start
+#
+# PROXMOX INFRASTRUCTURE (fixed by environment — see inventory/inventory.yml):
+#   Proxmox host:    magic.a0a0.org  (ansible_user: lavender)
+#   Storage pool:    local-lvm       (proxmox_storage)
+#   Templates:       ssh magic 'sudo qm list | grep template'
+#   Available bridges:
+#     vmbr0 — untagged LAN (default)
+#     (add site-specific VLANs here as you discover them)
+#
+# VM-SPECIFIC (yours to change):
+all:
+  children:
+    proxmox_hosts:
+      hosts:
+        magic:
+
+          # --- identity ---
+          vm_vmid: 500                       # must be unique (100-8999)
+          vm_name: my-vm                     # VM name in Proxmox
+          vm_template_vmid: 9004             # from: ssh magic 'sudo qm list | grep template'
+
+          # --- resources ---
+          vm_memory: 2048                    # RAM in MB
+          vm_cores: 2                        # CPU cores
+          vm_disk_size: 20G                  # boot disk size
+
+          # --- placement ---
+          vm_bridge: vmbr0                   # which bridge/VLAN
+
+          # --- cloud-init ---
+          vm_ansible_user: lavender          # login username created on first boot
+          vm_ssh_key_file: "~/.ssh/id_ed25519.pub"  # injected into authorized_keys
+          # vm_ansible_password: set via export VM_CI_PASS=... before running

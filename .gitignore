@@ -44,3 +44,7 @@ Thumbs.db
 .envrc
 local_*
 *.tar.gz
+
+# Site-specific VM inventories (gitignored — use *.example.yml as templates)
+inventory/*-vm.yml
+!inventory/*.yml.example

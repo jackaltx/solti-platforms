@@ -67,20 +67,22 @@ STATE_MAP["proxmox_vm:modify"]="modify"
 ./manage-platform.sh -h magic proxmox_template build --all-distros
 ./manage-platform.sh -h magic -t debian12 proxmox_template destroy
 
-# VM management (vm_template_vmid is REQUIRED - no defaults)
-./manage-platform.sh -h magic proxmox_vm create \
-  -e vm_vmid=500 \
-  -e vm_name=test-vm \
-  -e vm_template_vmid=9000
+# VM management — preferred: inventory file (all vars in one place, gitignored)
+./manage-platform.sh -h magic -i inventory/myvm.yml proxmox_vm create
+./manage-platform.sh -h magic -i inventory/myvm.yml proxmox_vm start
+./manage-platform.sh -h magic -i inventory/myvm.yml proxmox_vm stop
+./manage-platform.sh -h magic -i inventory/myvm.yml proxmox_vm remove
 
+# VM management — ad-hoc: -e flags (quick one-off operations)
 ./manage-platform.sh -h magic proxmox_vm verify -e vm_vmid=500
 ./manage-platform.sh -h magic proxmox_vm start -e vm_vmid=500
-./manage-platform.sh -h magic proxmox_vm remove -e vm_vmid=500
 ```
 
 **Key Features**:
 - Platform-aware action validation
+- `-i INVENTORY` flag layers a per-VM inventory on top of the base inventory
 - Generates playbooks dynamically
+- Auto-detects `~/.secrets/lavender.pass` for sudo (falls back to `-K`)
 - User confirmation before execution
 - Auto-cleanup on success, preserves failures for debugging
 - Batch operations with `--all-distros`
@@ -134,56 +136,69 @@ Check `roles/proxmox_template/vars/*.yml` for all supported distributions.
 
 ### proxmox_vm
 
-**Purpose**: Manage VM lifecycle - clone, configure, start, stop, remove
+**Purpose**: Manage VM lifecycle — clone, configure, start, stop, remove
 
-**Implemented States** (Phase 1):
-- `create`: Clone VM from template, resize disk, configure cloud-init
+**Implemented States**:
+
+- `create`: Clone VM from template, configure cloud-init (user, SSH key, password, bridge)
 - `verify`: Check VM exists and display configuration
-
-**Planned States** (Phase 2+):
 - `start`: Boot VM
 - `stop`: Stop VM (non-graceful)
 - `shutdown`: Graceful shutdown
 - `remove`: Destroy VM
-- `modify`: Change VM properties (resize disk, network, etc.)
 
-**Required Variables**:
-- `vm_state`: Action to perform (REQUIRED)
-- `vm_vmid`: Target VM ID (REQUIRED)
-- `vm_name`: VM name (required for `create`)
-- `vm_template_vmid`: Template VMID to clone from (required for `create`, **NO DEFAULT**)
+**VM Inventory Pattern** (preferred over `-e` flags):
 
-**Important**: `vm_template_vmid` has NO default value. You must specify which template to clone from:
+Each VM gets a gitignored `inventory/<hostname>-vm.yml` with all its vars. Use `inventory/<hostname>-vm.yml.example` as the checked-in template. This makes the VM self-documenting and reproducible.
 
-```bash
-# Find available templates
-ssh magic 'qm list | grep template'
-
-# Use the VMID from the output
-./manage-platform.sh -h magic proxmox_vm create \
-  -e vm_vmid=500 \
-  -e vm_name=test \
-  -e vm_template_vmid=9000  # <-- REQUIRED
+```text
+inventory/
+  inventory.yml              # Proxmox host infrastructure (checked in)
+  matrix-bot1-vm.yml         # Site-specific VM vars (gitignored)
+  matrix-bot1-vm.yml.example # Public template (checked in)
 ```
 
-**Optional Variables**:
-- `vm_disk_size`: Boot disk size (default: `20G`)
-- `vm_memory`: RAM in MB (default: `4096`)
-- `vm_cores`: CPU cores (default: `4`)
-- `vm_linked_clone`: Use linked clone (default: `true` - faster, space-efficient)
-  - Linked clones are faster and use less space but depend on template
-  - Full clones are slower but independent of template
-  - Override with `-e vm_linked_clone=false`
-- `vm_ip_config`: Cloud-init network config (default: `ip=dhcp`)
-- `vm_ssh_key_file`: SSH public key to inject (default: `~/.ssh/id_rsa.pub`)
+The example file separates what's fixed (Proxmox infrastructure) from what's yours to change (VM identity, resources, placement, cloud-init).
+
+**Variables — VM Identity** (REQUIRED for `create`):
+
+| Variable | Description |
+|---|---|
+| `vm_vmid` | Target VMID (100-8999, must be unique) |
+| `vm_name` | VM name in Proxmox |
+| `vm_template_vmid` | Template to clone from (**no default** — use `ssh magic 'sudo qm list \| grep template'`) |
+
+**Variables — Resources**:
+
+| Variable | Default | Description |
+|---|---|---|
+| `vm_memory` | 4096 | RAM in MB |
+| `vm_cores` | 4 | CPU cores |
+| `vm_disk_size` | 20G | Boot disk size |
+| `vm_linked_clone` | true | Linked clone (fast, space-efficient) vs full clone (independent) |
+
+**Variables — Placement**:
+
+| Variable | Default | Description |
+|---|---|---|
+| `vm_bridge` | vmbr0 | Network bridge / VLAN |
+| `vm_ip_config` | ip=dhcp | Cloud-init network config |
+
+**Variables — Cloud-init**:
+
+| Variable | Default | Description |
+|---|---|---|
+| `vm_ansible_user` | lavender | Login username created on first boot |
+| `vm_ssh_key_file` | ~/.ssh/id_ed25519.pub | SSH public key to inject |
+| `vm_ansible_password` | `$VM_CI_PASS` env var | Console/sudo password (omitted if env var not set) |
 
 **Workflow for `create`**:
 1. Verify template exists at `vm_template_vmid`
 2. Check target `vm_vmid` is not in use
-3. Clone template (linked or full based on `vm_linked_clone`)
-4. Extract boot disk name
-5. Resize disk to `vm_disk_size`
-6. Configure cloud-init (SSH key, network)
+3. Clone template (linked or full)
+4. Set cloud-init: `--ciuser`, `--sshkeys`, `--cipassword` (if set)
+5. Set network bridge: `--net0 virtio,bridge=<vm_bridge>`
+6. Display summary
 
 ## Reference Hosts
 
