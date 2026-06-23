@@ -9,7 +9,7 @@ This collection uses a two-branch workflow:
 
 ## Development Workflow
 
-```
+```text
 feature branch → test → main (via PR)
 ```
 
@@ -138,8 +138,8 @@ This collection requires Proxmox infrastructure:
 ### Cloud Image Downloads
 
 The proxmox_template role downloads cloud images:
-- Rocky: https://dl.rockylinux.org/
-- Debian: https://cloud.debian.org/
+- Rocky: <https://dl.rockylinux.org/>
+- Debian: <https://cloud.debian.org/>
 
 **Caching**: Downloaded images are cached on Proxmox host
 

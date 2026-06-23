@@ -1,0 +1,15 @@
+title: "Platforms"
+section: "Platforms"
+nav_order: 1
+description: "Proxmox VM and template management — template-first workflow, cloud-init, auto-VMID"
+
+sources:
+  - file: CLAUDE.md
+    sections:
+      - "Purpose"
+      - "Key Concepts"
+      - "Management Scripts"
+      - "Design Patterns"
+      - "Common Workflows"
+  - file: galaxy.yml
+    type: metadata

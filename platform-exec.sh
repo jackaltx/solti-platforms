@@ -41,7 +41,7 @@ HOST=""
 
 # Display usage information
 usage() {
-    echo "Usage: $(basename $0) [-h HOST] [-K] <platform> [entry] [options]"
+    echo "Usage: $(basename "$0") [-h HOST] [-K] <platform> [entry] [options]"
     echo ""
     echo "Options:"
     echo "  -h HOST - Target specific host from inventory (REQUIRED for proxmox operations)"
@@ -69,9 +69,9 @@ usage() {
     echo "  - convert_template - Convert to template"
     echo ""
     echo "Examples:"
-    echo "  $(basename $0) -h magic proxmox_template verify -e template_distribution=rocky9"
-    echo "  $(basename $0) -h magic -K proxmox_template cleanup -e template_distribution=debian12"
-    echo "  $(basename $0) -h proxmox2 proxmox_template                   # Default entry, no sudo"
+    echo "  $(basename "$0") -h magic proxmox_template verify -e template_distribution=rocky9"
+    echo "  $(basename "$0") -h magic -K proxmox_template cleanup -e template_distribution=debian12"
+    echo "  $(basename "$0") -h proxmox2 proxmox_template                   # Default entry, no sudo"
     exit 1
 }
 

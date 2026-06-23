@@ -34,10 +34,10 @@ template_network_model: virtio
 template_network_mtu: 1
 
 # cloud-init configuration
-template_ci_user: "{{ ansible_user }}"
-template_ci_passwd: "changeme" #  CLAUDE:  thie need to come from an env var "SSH_CI_PASS" or accept be this
-template_ci_sshkeys: "{{ lookup('file', ansible_ssh_private_key_file + '.pub') }}" # CLAUDE this needs to come from a env var "SSH_CI_KEY"
-template_ci_ipconfig: "ip=dhcp" # CLAUDE SMELL  this is good for this sprint.
+template_ci_user: "jackaltx"
+template_ci_passwd: "{{ lookup('env', 'SSH_CI_PASS') | default('') }}"
+template_ci_sshkeys: "{{ lookup('env', 'SSH_CI_KEY') | default(lookup('file', ansible_ssh_private_key_file + '.pub', errors='ignore') | default('')) }}"
+template_ci_ipconfig: "ip=dhcp"
 
 # Agent
 template_qemu_agent: 1

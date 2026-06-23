@@ -1,0 +1,33 @@
+---
+extends: default
+
+rules:
+  line-length:
+    max: 160
+    level: warning
+  comments:
+    min-spaces-from-content: 1  # Relaxed from 2 for incremental fixes
+    level: warning
+  comments-indentation:
+    level: warning
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1  # Allow some flexibility
+    level: warning
+  brackets:
+    level: warning
+  trailing-spaces:
+    level: warning
+  new-line-at-end-of-file:
+    level: warning
+  truthy:
+    level: warning
+  document-start:
+    level: warning
+
+ignore: |
+  node_modules/
+  .git/
+  tmp/
+  logs/
+  .github/workflows/

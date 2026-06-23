@@ -12,9 +12,16 @@
   command: >
     qm set {{ template_vmid }}
     --ciuser {{ template_ci_user }}
-    --cipassword {{ template_ci_passwd }}
   become: true
   register: ciuser_result
+
+- name: Set cloud-init password
+  command: >
+    qm set {{ template_vmid }}
+    --cipassword {{ template_ci_passwd }}
+  become: true
+  when: template_ci_passwd | length > 0
+  register: cipasswd_result
 
 - name: Create temporary file for SSH keys
   ansible.builtin.tempfile:

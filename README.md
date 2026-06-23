@@ -1,6 +1,18 @@
 # Solti Platforms Collection
 
-This collection provides Ansible roles for managing various service platforms.
+Ansible collection for Proxmox template and VM lifecycle management.
+
+## Workflow Evolution
+
+The original approach passed all VM parameters as `-e` flags on the command line. The current approach uses **per-VM inventory files** instead:
+
+| Old | New |
+|-----|-----|
+| `./manage-platform.sh -h magic proxmox_vm create -e vm_vmid=500 -e vm_name=foo -e vm_template_vmid=9000` | `./manage-platform.sh -h magic -i inventory/foo-vm.yml proxmox_vm create` |
+
+The inventory file documents what's fixed by the environment (Proxmox host, storage, available bridges) separately from what's VM-specific (name, VMID, resources, cloud-init). It's gitignored so site-specific details stay private; a `.example` file is checked in as a public template.
+
+This mirrors the pattern used in `solti-podman` (`podma.yml`) and `solti-matrix-bots` (`matrix-bot1.yml`) — the collection is self-contained and deployable without a conductor.
 
 ## Scripts
 
@@ -11,32 +23,32 @@ This script is used to manage platforms using dynamically generated Ansible play
 **Usage:**
 
 ```bash
-./manage-platform.sh [-h HOST] <platform> <action> [options]
+./manage-platform.sh [-h HOST] [-i INVENTORY] [-t TEMPLATE] <platform> <action> [options]
 ```
 
 **Description:**
 
-The `manage-platform.sh` script is a wrapper that simplifies the execution of Ansible roles for building, destroying, creating, and removing various service platforms. It dynamically generates a temporary Ansible playbook based on the specified platform and action, and then executes it.
+Manages platform infrastructure via dynamically generated Ansible playbooks. The preferred workflow uses per-VM inventory files (`-i`) rather than `-e` flags — all VM settings live in one gitignored file, making deployments reproducible and self-documenting.
 
 **Key Features:**
 
-*   **Dynamic Playbook Generation:** Automatically creates an Ansible playbook in the `tmp/` directory tailored to the specified platform and action.
-*   **Host Targeting:** Allows targeting a specific host from the inventory using the `-h` flag, which is mandatory for Proxmox operations.
-*   **Platform and Action Validation:** Checks if the specified platform and action are supported before execution. The supported platforms and actions are defined within the script.
-*   **Template Discovery:** For the `proxmox_template` platform, it can discover available templates from the `roles/proxmox_template/vars` directory.
-*   **"All Distros" Mode:** The `--all-distros` flag allows processing all discovered distributions for the `proxmox_template` platform in a single run.
-*   **Extra Variables:** Supports passing extra variables to the Ansible playbook using the `-e` flag.
-*   **Interactive Confirmation:** Prompts for confirmation before executing the generated playbook, displaying the playbook's content for review.
-*   **Cleanup:** Automatically removes the temporary playbook upon successful execution.
+* **Dynamic Playbook Generation:** Creates a temporary playbook in `tmp/` on the fly; preserved on failure for debugging.
+* **VM Inventory Pattern:** `-i inventory/<hostname>-vm.yml` layers VM-specific vars on top of the base inventory. Each VM gets its own gitignored file; use the `.example` as a checked-in template.
+* **Host Targeting:** `-h HOST` targets a specific Proxmox host (required for Proxmox operations).
+* **Auto sudo:** Detects `~/.secrets/lavender.pass` automatically; falls back to interactive `-K`.
+* **Platform and Action Validation:** Rejects invalid platform/action combinations with a helpful error.
+* **"All Distros" Mode:** `--all-distros` processes all templates in a single run.
+* **Extra Variables:** `-e VAR=VALUE` for ad-hoc overrides.
+* **Interactive Confirmation:** Displays generated playbook before executing.
 
 **Supported Platforms:**
 
-*   `proxmox_template`
-*   `proxmox_vm`
-*   `platform_base`
-*   `linode_instance`
-*   `k3s_control`
-*   `k3s_worker`
+* `proxmox_template`
+* `proxmox_vm`
+* `platform_base`
+* `linode_instance`
+* `k3s_control`
+* `k3s_worker`
 
 **Available Templates (for proxmox_template):**
 
@@ -47,29 +59,31 @@ The `manage-platform.sh` script is a wrapper that simplifies the execution of An
 | rocky10      | Ready  |
 | rocky9       | Ready  |
 
-**Supported Actions:**
+**Template Actions:** `build`, `destroy`
 
-*   `build`
-*   `destroy`
-*   `create`
-*   `remove`
+**VM Actions:** `create`, `verify`, `start`, `stop`, `shutdown`, `remove`
 
 **Examples:**
 
-*   Build a `rocky9` Proxmox template on the `magic` host:
-    ```bash
-    ./manage-platform.sh -h magic -t rocky9 proxmox_template build
-    ```
+```bash
+# Build templates
+./manage-platform.sh -h magic -t rocky9 proxmox_template build
+./manage-platform.sh -h magic proxmox_template build --all-distros
+./manage-platform.sh -h magic -t debian12 proxmox_template destroy
 
-*   Build all Proxmox templates on the `magic` host:
-    ```bash
-    ./manage-platform.sh -h magic proxmox_template build --all-distros
-    ```
+# VM lifecycle — inventory-based (preferred)
+# All VM vars in inventory/<hostname>-vm.yml (gitignored)
+# Use inventory/<hostname>-vm.yml.example as your starting point
+export VM_CI_PASS="yourpassword"   # optional: sets cloud-init console password
+./manage-platform.sh -h magic -i inventory/myvm.yml proxmox_vm create
+./manage-platform.sh -h magic -i inventory/myvm.yml proxmox_vm start
+./manage-platform.sh -h magic -i inventory/myvm.yml proxmox_vm stop
+./manage-platform.sh -h magic -i inventory/myvm.yml proxmox_vm remove
 
-*   Destroy a `debian12` Proxmox template on the `proxmox2` host:
-    ```bash
-    ./manage-platform.sh -h proxmox2 -t debian12 proxmox_template destroy
-    ```
+# VM lifecycle — ad-hoc (quick one-offs)
+./manage-platform.sh -h magic proxmox_vm verify -e vm_vmid=500
+./manage-platform.sh -h magic proxmox_vm start -e vm_vmid=500
+```
 
 ### `platform-exec.sh`
 
@@ -87,39 +101,39 @@ The `platform-exec.sh` script allows for focused execution of individual tasks o
 
 **Key Features:**
 
-*   **Task-Specific Execution:** Targets and executes a single task file (entry point) from an Ansible role.
-*   **Dynamic Playbook Generation:** Creates a temporary Ansible playbook to run the specified task.
-*   **Host Targeting:** Allows targeting a specific host with the `-h` flag (required for Proxmox operations).
-*   **Sudo Prompt:** The `-K` flag prompts for a sudo password when the task requires elevated privileges.
-*   **Default Entry Point:** If no entry is specified, it defaults to the `verify` task for the given platform.
-*   **Supported Platforms:** Supports the same platforms as `manage-platform.sh`.
-*   **Extra Variables:** Supports passing extra variables to the Ansible playbook using the `-e` flag.
+* **Task-Specific Execution:** Targets and executes a single task file (entry point) from an Ansible role.
+* **Dynamic Playbook Generation:** Creates a temporary Ansible playbook to run the specified task.
+* **Host Targeting:** Allows targeting a specific host with the `-h` flag (required for Proxmox operations).
+* **Sudo Prompt:** The `-K` flag prompts for a sudo password when the task requires elevated privileges.
+* **Default Entry Point:** If no entry is specified, it defaults to the `verify` task for the given platform.
+* **Supported Platforms:** Supports the same platforms as `manage-platform.sh`.
+* **Extra Variables:** Supports passing extra variables to the Ansible playbook using the `-e` flag.
 
 **Common Entry Points (examples for `proxmox_template`):**
 
-*   `verify` (default) - Verify platform state
-*   `download_image` - Download cloud image
-*   `resize_image` - Resize disk image
-*   `cleanup` - Clean up temporary files
-*   `create_vm` - Create VM
-*   `import_disk` - Import disk
-*   `configure_storage` - Configure storage
-*   `setup_cloudinit` - Setup cloud-init
-*   `convert_template` - Convert to template
+* `verify` (default) - Verify platform state
+* `download_image` - Download cloud image
+* `resize_image` - Resize disk image
+* `cleanup` - Clean up temporary files
+* `create_vm` - Create VM
+* `import_disk` - Import disk
+* `configure_storage` - Configure storage
+* `setup_cloudinit` - Setup cloud-init
+* `convert_template` - Convert to template
 
 **Examples:**
 
-*   Verify a `rocky9` Proxmox template on the `magic` host:
+* Verify a `rocky9` Proxmox template on the `magic` host:
     ```bash
     ./platform-exec.sh -h magic proxmox_template verify -e template_distribution=rocky9
     ```
 
-*   Clean up temporary files for a `debian12` Proxmox template on the `magic` host, prompting for sudo password:
+* Clean up temporary files for a `debian12` Proxmox template on the `magic` host, prompting for sudo password:
     ```bash
     ./platform-exec.sh -h magic -K proxmox_template cleanup -e template_distribution=debian12
     ```
 
-*   Execute the default `verify` entry point for `proxmox_template` on `proxmox2` host (no sudo by default):
+* Execute the default `verify` entry point for `proxmox_template` on `proxmox2` host (no sudo by default):
     ```bash
     ./platform-exec.sh -h proxmox2 proxmox_template
     ```
