@@ -45,6 +45,10 @@ Thumbs.db
 local_*
 *.tar.gz
 
-# Site-specific VM inventories (gitignored — use *.example.yml as templates)
+# Private inventory — nested private git repo (jackaltx/solti-platforms-inventory on Gitea)
+# Public template: inventory/_example.yml
+inventory/hosts/
+
+# Legacy gitignores — kept for any files still in inventory/ root
 inventory/*-vm.yml
 !inventory/*.yml.example

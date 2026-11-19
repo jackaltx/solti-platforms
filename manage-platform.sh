@@ -15,7 +15,7 @@ set -e
 
 # Configuration
 ANSIBLE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-INVENTORY="${ANSIBLE_DIR}/inventory/inventory.yml"
+INVENTORY="${SOLTI_INVENTORY:-${ANSIBLE_DIR}/inventory/hosts}"
 TEMP_DIR="${ANSIBLE_DIR}/tmp"
 HOST=""
 EXTRA_INVENTORY=""
