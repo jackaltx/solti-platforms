@@ -17,6 +17,8 @@
 #   clone_full: 0=linked clone (default), 1=full clone
 #   clone_cores: Number of CPU cores (optional)
 #   clone_memory: Memory in MB (optional)
+#   clone_ci_user: Override cloud-init user on the clone (optional)
+#   clone_sshkeys: SSH public key to inject into clone via cloud-init (optional)
 #
 # Output variables:
 #   latest_template_vmid: VMID of source template
@@ -56,6 +58,45 @@
     - clone_gateway is defined
   register: network_result
   changed_when: network_result.rc == 0
+
+- name: Override cloud-init user for clone
+  ansible.builtin.shell:
+    cmd: "sudo qm set {{ clone_vmid }} --ciuser {{ clone_ci_user }}"
+  when: clone_ci_user is defined
+  register: ciuser_result
+  changed_when: ciuser_result.rc == 0
+
+- name: Inject SSH keys into clone
+  when: clone_sshkeys is defined and clone_sshkeys | length > 0
+  block:
+    - name: Create temporary file for SSH keys
+      ansible.builtin.tempfile:
+        state: file
+        suffix: .pub
+      register: clone_sshkey_tempfile
+
+    - name: Write SSH key to temporary file
+      ansible.builtin.copy:
+        content: "{{ clone_sshkeys }}\n"
+        dest: "{{ clone_sshkey_tempfile.path }}"
+        mode: "0600"
+
+    - name: Set SSH keys for cloud-init
+      ansible.builtin.command:
+        argv:
+          - sudo
+          - qm
+          - set
+          - "{{ clone_vmid }}"
+          - --sshkeys
+          - "{{ clone_sshkey_tempfile.path }}"
+      register: sshkeys_result
+      changed_when: sshkeys_result.rc == 0
+
+    - name: Remove temporary SSH key file
+      ansible.builtin.file:
+        path: "{{ clone_sshkey_tempfile.path }}"
+        state: absent
 
 - name: Set CPU cores
   ansible.builtin.shell:
