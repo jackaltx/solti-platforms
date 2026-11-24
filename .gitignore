@@ -47,7 +47,7 @@ local_*
 
 # Private inventory — nested private git repo (jackaltx/solti-platforms-inventory on Gitea)
 # Public template: inventory/_example.yml
-inventory/hosts/
+inventory/hosts
 
 # Legacy gitignores — kept for any files still in inventory/ root
 inventory/*-vm.yml
