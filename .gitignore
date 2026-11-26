@@ -52,3 +52,6 @@ inventory/hosts
 # Legacy gitignores — kept for any files still in inventory/ root
 inventory/*-vm.yml
 !inventory/*.yml.example
+
+# Developer architecture notes — stay local, not shipped
+CLAUDE.md
